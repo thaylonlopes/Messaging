@@ -1,0 +1,83 @@
+# TL.Messaging
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple.svg)](https://dotnet.microsoft.com/)
+
+Biblioteca corporativa de mensageria assíncrona resiliente para ecossistemas de microsserviços orientados a eventos (Event-Driven Architecture), com suporte unificado a **RabbitMQ** e **Apache Kafka**.
+
+---
+
+## 🌟 Visão Geral
+
+`TL.Messaging` implementa o padrão **Ports & Adapters (Hexagonal Architecture)** para abstrair completamente os provedores de mensageria da camada de aplicação e domínio. Ela fornece:
+
+- **Contratos Agnósticos:** Interfaces `IEventProducer` e `IEventHandler<T>` desacopladas de qualquer broker.
+- **Envelope Padronizado:** `EventMessage<T>` compatível com a especificação CloudEvents (ID único, CorrelationId, Timestamp UTC, EventType e cabeçalhos contextuais).
+- **Resiliência Integrada:** Políticas de retentativa com Polly (exponential backoff), Dead-Letter Queue / Topic (.dlq/.dlt) automáticos e confirmações de entrega (Publisher Confirms no RabbitMQ e Acks.All/Idempotence no Kafka).
+- **Multi-Target:** Suporte nativo e otimizado para `.NET 8.0` (LTS) e `.NET 9.0` (STS).
+- **Governança de Pacotes:** Central Package Management (CPM) via `Directory.Packages.props`.
+
+---
+
+## 📦 Estrutura de Projetos
+
+| Projeto | Descrição |
+| :--- | :--- |
+| **`TL.Messaging.Abstractions`** | Contratos agnósticos fundamentais (`IEventProducer`, `IEventHandler<T>`, `EventMessage<T>`, `EventMetadata`, `Result`). |
+| **`TL.Messaging.RabbitMQ`** | Adaptador AMQP 0-9-1 com topologia automática de Exchange/Queue/DLQ e Publisher Confirms. |
+| **`TL.Messaging.Kafka`** | Adaptador Apache Kafka com controle de partição, headers de telemetria, commit manual e DLT. |
+| **`TL.Messaging.Showcase.Api`** | Vitrine técnica executável (Minimal API com Swagger) para publicação e consumo nos brokers. |
+| **`TL.Messaging.RabbitMQ.Tests`** | Suíte de testes unitários e de integração do adaptador RabbitMQ. |
+| **`TL.Messaging.Kafka.Tests`** | Suíte de testes unitários e de integração do adaptador Apache Kafka. |
+
+---
+
+## 🚀 Como Usar
+
+### 1. Definindo um Evento e Manipulador
+
+```csharp
+using TL.Messaging.Abstractions;
+
+public record OrderCreatedEvent(string OrderId, decimal TotalAmount);
+
+public class OrderCreatedHandler : IEventHandler<OrderCreatedEvent>
+{
+    public Task<Result> HandleAsync(EventMessage<OrderCreatedEvent> eventMessage, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(Result.Success());
+    }
+}
+```
+
+---
+
+### 2. Configurando RabbitMQ
+
+```csharp
+using TL.Messaging.RabbitMQ.Extensions;
+
+builder.Services.AddRabbitMqMessaging(builder.Configuration);
+builder.Services.AddRabbitMqConsumer<OrderCreatedEvent, OrderCreatedHandler>(
+    queueName: "orders.created.queue",
+    routingKey: "orders.created");
+```
+
+---
+
+### 3. Configurando Apache Kafka
+
+```csharp
+using TL.Messaging.Kafka.Extensions;
+
+builder.Services.AddKafkaMessaging(builder.Configuration);
+builder.Services.AddKafkaConsumer<OrderCreatedEvent, OrderCreatedHandler>(
+    topic: "orders.created");
+```
+
+---
+
+## 📄 Licença
+
+Este projeto está sob a licença [MIT](LICENSE).
+

@@ -1,0 +1,23 @@
+## Visual Studio e .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+
+## Build e Testes
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+nupkgs/
+
+## SO e Ferramentas
+.DS_Store
+Thumbs.db
+.idea/
+.antigravity/
+.gemini/
+
