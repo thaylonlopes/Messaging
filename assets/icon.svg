@@ -1,0 +1,131 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%" fill="none">
+  <defs>
+    <!-- Top Face Gradient (Exact sampled: Royal Blue #3352A3 -> Violet #4D36AA -> Purple #7835B3) -->
+    <linearGradient id="topGrad" x1="215" y1="345" x2="805" y2="345" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3352A3" />
+      <stop offset="45%" stop-color="#4D36AA" />
+      <stop offset="100%" stop-color="#7835B3" />
+    </linearGradient>
+
+    <!-- Left Face Gradient (Deep Royal Navy #1C2371 -> Electric Violet #6231B2) -->
+    <linearGradient id="leftGrad" x1="215" y1="510" x2="512" y2="510" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1C2371" />
+      <stop offset="65%" stop-color="#462394" />
+      <stop offset="100%" stop-color="#6231B2" />
+    </linearGradient>
+
+    <!-- Right Face Gradient (Electric Magenta-Violet #5E2FAA -> Rich Indigo #3A2184) -->
+    <linearGradient id="rightGrad" x1="512" y1="510" x2="805" y2="510" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3A2184" />
+      <stop offset="40%" stop-color="#2B176B" />
+      <stop offset="100%" stop-color="#5E2FAA" />
+    </linearGradient>
+
+    <!-- Front V Rim Light (Bright Cyan Specular Glint) -->
+    <linearGradient id="frontVRim" x1="215" y1="345" x2="805" y2="345" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.3" />
+      <stop offset="45%" stop-color="#67E8F9" stop-opacity="0.95" />
+      <stop offset="50%" stop-color="#A5F3FC" stop-opacity="1" />
+      <stop offset="55%" stop-color="#67E8F9" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#818CF8" stop-opacity="0.4" />
+    </linearGradient>
+
+    <!-- Center Vertical Ridge (Cyan to Slate Blue to Navy) -->
+    <linearGradient id="centerRidge" x1="512" y1="500" x2="512" y2="840" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#92F5FB" />
+      <stop offset="15%" stop-color="#8AE5F8" stop-opacity="0.9" />
+      <stop offset="40%" stop-color="#77B6DF" stop-opacity="0.7" />
+      <stop offset="70%" stop-color="#657FC9" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#20155E" stop-opacity="0.1" />
+    </linearGradient>
+
+    <!-- T & L Debossed Cavity Background -->
+    <linearGradient id="tCavity" x1="270" y1="450" x2="440" y2="700" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#181958" />
+      <stop offset="60%" stop-color="#252678" />
+      <stop offset="100%" stop-color="#1A174E" />
+    </linearGradient>
+
+    <linearGradient id="lCavity" x1="580" y1="490" x2="740" y2="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#18124C" />
+      <stop offset="60%" stop-color="#211B65" />
+      <stop offset="100%" stop-color="#130C36" />
+    </linearGradient>
+
+    <!-- 3D Inner Wall Light -->
+    <linearGradient id="wallCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#93C5FD" />
+      <stop offset="50%" stop-color="#60A5FA" />
+      <stop offset="100%" stop-color="#38BDF8" />
+    </linearGradient>
+
+    <!-- Ambient Shadow under cube -->
+    <radialGradient id="groundShadow" cx="512" cy="860" r="310" fx="512" fy="860" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.38" />
+      <stop offset="55%" stop-color="#000000" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Ground Shadow -->
+  <ellipse cx="512" cy="850" rx="275" ry="65" fill="url(#groundShadow)" />
+
+  <!-- Cube Body with Soft Rounded Corners -->
+  <g id="cube-body">
+    <!-- Left Face -->
+    <path d="M215 345 L512 504 L512 840 L215 678 Z" fill="url(#leftGrad)" />
+
+    <!-- Right Face -->
+    <path d="M512 504 L805 345 L805 678 L512 840 Z" fill="url(#rightGrad)" />
+
+    <!-- Top Face -->
+    <path d="M512 172 L805 345 L512 504 L215 345 Z" fill="url(#topGrad)" />
+  </g>
+
+  <!-- Outer Rounded Bevel Contour -->
+  <polygon points="512,172 805,345 805,678 512,840 215,678 215,345" 
+           stroke="#1A1A4E" stroke-width="16" stroke-linejoin="round" fill="none" opacity="0.2" />
+
+  <!-- Front V Rim Light (Top-Left to Center to Top-Right) -->
+  <polyline points="215,345 512,504 805,345" 
+            stroke="url(#frontVRim)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+
+  <!-- Center Vertical Ridge (Cyan Highlight) -->
+  <line x1="512" y1="504" x2="512" y2="840" 
+        stroke="url(#centerRidge)" stroke-width="4.5" stroke-linecap="round" />
+
+  <!-- ==================== LETTER 'T' (LEFT FACE) ==================== -->
+  <!-- 1. T Deep Cutout Floor (Back face of deboss) -->
+  <polygon points="268,442 442,536 442,578 385,548 385,702 333,674 333,520 268,485" 
+           fill="url(#tCavity)" />
+
+  <!-- 2. T Top and Left Inner Shadows -->
+  <polygon points="268,442 442,536 442,544 268,450" fill="#07071A" opacity="0.9" />
+  <polygon points="268,442 268,485 274,488 274,448" fill="#07071A" opacity="0.85" />
+  <polygon points="333,520 333,674 338,677 338,523" fill="#090920" opacity="0.8" />
+
+  <!-- 3. T 3D Specular Inner Wall Light -->
+  <polyline points="385,548 385,702" 
+            stroke="url(#wallCyan)" stroke-width="4" stroke-linecap="square" fill="none" />
+  <line x1="333" y1="674" x2="385" y2="702" 
+        stroke="#818CF8" stroke-width="3" stroke-linecap="round" />
+  <line x1="385" y1="548" x2="442" y2="578" 
+        stroke="#60A5FA" stroke-width="2.5" />
+
+  <!-- ==================== LETTER 'L' (RIGHT FACE) ==================== -->
+  <!-- 1. L Deep Cutout Floor -->
+  <polygon points="580,518 630,492 630,662 744,603 744,648 580,733" 
+           fill="url(#lCavity)" />
+
+  <!-- 2. L Top and Left Inner Shadows -->
+  <polygon points="580,518 630,492 630,498 580,524" fill="#050414" opacity="0.9" />
+  <polygon points="630,662 744,603 744,609 630,668" fill="#060518" opacity="0.85" />
+
+  <!-- 3. L 3D Specular Inner Wall Light -->
+  <polyline points="630,492 630,662" 
+            stroke="url(#wallCyan)" stroke-width="3.5" fill="none" opacity="0.85" />
+  <line x1="580" y1="733" x2="744" y2="648" 
+        stroke="#7C3AED" stroke-width="2.5" opacity="0.7" />
+  <line x1="744" y1="603" x2="744" y2="648" 
+        stroke="#6366F1" stroke-width="2.5" opacity="0.6" />
+</svg>
