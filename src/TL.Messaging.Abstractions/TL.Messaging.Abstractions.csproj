@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>TL.Messaging.Abstractions</PackageId>
+    <Description>Contratos agnósticos de mensageria, envelopes CloudEvents e interfaces para produtores e consumidores de eventos.</Description>
+    <PackageTags>messaging;abstractions;event-driven;events;producer;consumer;contracts;tl</PackageTags>
+  </PropertyGroup>
+
+</Project>
+

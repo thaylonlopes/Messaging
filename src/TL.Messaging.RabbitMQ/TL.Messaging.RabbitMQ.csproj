@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>TL.Messaging.RabbitMQ</PackageId>
+    <Description>Adaptador resiliente de RabbitMQ implementando a abstração unificada IEventProducer e IEventHandler com suporte a Publisher Confirms, Dead-Letter Queue (.dlq) automática, retentativas e DI para .NET 8 e .NET 9.</Description>
+    <PackageTags>rabbitmq;messaging;event-driven;dlq;publisher-confirms;polly;amqp;csharp;dotnet;net8;net9;tl</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TL.Messaging.Abstractions\TL.Messaging.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="Polly" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>

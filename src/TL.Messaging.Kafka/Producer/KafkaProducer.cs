@@ -1,0 +1,200 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using TL.Messaging.Kafka.Configuration;
+using TL.Messaging.Abstractions;
+using Confluent.Kafka;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace TL.Messaging.Kafka.Producer
+{
+    /// <summary>
+    /// Implementação resiliente do produtor de mensagens para Apache Kafka com injeção de headers de telemetria e idempotência.
+    /// </summary>
+    public class KafkaProducer : IKafkaProducer, IDisposable
+    {
+        private readonly KafkaOptions _options;
+        private readonly IProducer<string, string> _producer;
+        private readonly ILogger<KafkaProducer>? _logger;
+        private bool _disposed;
+
+        /// <summary>
+        /// Inicializa uma nova instância de <see cref="KafkaProducer"/>.
+        /// </summary>
+        /// <param name="options">Opções de configuração do Kafka.</param>
+        /// <param name="producer">Instância customizada de IProducer (opcional, para testes unitários ou configurações avançadas).</param>
+        /// <param name="logger">Logger para diagnósticos.</param>
+        public KafkaProducer(
+            IOptions<KafkaOptions> options,
+            IProducer<string, string>? producer = null,
+            ILogger<KafkaProducer>? logger = null)
+        {
+            _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+            _logger = logger;
+
+            if (producer != null)
+            {
+                _producer = producer;
+            }
+            else
+            {
+                var producerConfig = new ProducerConfig
+                {
+                    BootstrapServers = _options.BootstrapServers,
+                    EnableIdempotence = _options.EnableIdempotence,
+                    Acks = Acks.All
+                };
+
+                if (!string.IsNullOrWhiteSpace(_options.SaslUsername) && !string.IsNullOrWhiteSpace(_options.SaslPassword))
+                {
+                    producerConfig.SaslUsername = _options.SaslUsername;
+                    producerConfig.SaslPassword = _options.SaslPassword;
+
+                    if (Enum.TryParse<SecurityProtocol>(_options.SecurityProtocol, true, out var secProto))
+                    {
+                        producerConfig.SecurityProtocol = secProto;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(_options.SaslMechanism) &&
+                        Enum.TryParse<SaslMechanism>(_options.SaslMechanism, true, out var saslMech))
+                    {
+                        producerConfig.SaslMechanism = saslMech;
+                    }
+                }
+
+                _producer = new ProducerBuilder<string, string>(producerConfig).Build();
+            }
+        }
+
+        /// <inheritdoc />
+        public Task<Result> PublishAsync<T>(
+            T message,
+            EventMetadata? metadata = null,
+            CancellationToken cancellationToken = default) where T : class
+        {
+            if (message == null) throw new ArgumentNullException(nameof(message));
+
+            string topic = metadata?.Topic ?? _options.DefaultTopic;
+            string partitionKey = metadata?.PartitionKey ?? metadata?.RoutingKey ?? Guid.NewGuid().ToString();
+
+            return ProduceToTopicAsync(topic, partitionKey, message, metadata, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task<Result> PublishBatchAsync<T>(
+            IEnumerable<T> messages,
+            EventMetadata? metadata = null,
+            CancellationToken cancellationToken = default) where T : class
+        {
+            if (messages == null) throw new ArgumentNullException(nameof(messages));
+
+            foreach (var message in messages)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return Result.Failure(TL.Messaging.Abstractions.Error.Failure("Kafka.Cancellation", "Operação de publicação em lote cancelada."));
+                }
+
+                var result = await PublishAsync(message, metadata, cancellationToken).ConfigureAwait(false);
+                if (result.IsFailure)
+                {
+                    return result;
+                }
+            }
+
+            return Result.Success();
+        }
+
+        /// <inheritdoc />
+        public async Task<Result> ProduceToTopicAsync<T>(
+            string topic,
+            string partitionKey,
+            T message,
+            EventMetadata? metadata = null,
+            CancellationToken cancellationToken = default) where T : class
+        {
+            if (string.IsNullOrWhiteSpace(topic)) topic = _options.DefaultTopic;
+            if (string.IsNullOrWhiteSpace(partitionKey)) partitionKey = Guid.NewGuid().ToString();
+            if (message == null) throw new ArgumentNullException(nameof(message));
+
+            try
+            {
+                var eventEnvelope = EventMessage<T>.Create(
+                    payload: message,
+                    correlationId: metadata?.CorrelationId,
+                    eventType: typeof(T).Name,
+                    headers: metadata?.Headers);
+
+                string jsonPayload = JsonSerializer.Serialize(eventEnvelope);
+
+                var kafkaMessage = new Message<string, string>
+                {
+                    Key = partitionKey,
+                    Value = jsonPayload,
+                    Timestamp = new Timestamp(eventEnvelope.Timestamp.UtcDateTime),
+                    Headers = new Headers()
+                };
+
+                PopulateTracingHeaders(kafkaMessage.Headers, eventEnvelope, metadata);
+
+                var deliveryResult = await _producer.ProduceAsync(topic, kafkaMessage, cancellationToken).ConfigureAwait(false);
+
+                _logger?.LogDebug("Evento {EventType} publicado no Kafka (Tópico: {Topic}, Partição: {Partition}, Offset: {Offset})",
+                    eventEnvelope.EventType, topic, deliveryResult.Partition.Value, deliveryResult.Offset.Value);
+
+                return Result.Success();
+            }
+            catch (ProduceException<string, string> pEx)
+            {
+                _logger?.LogError(pEx, "Erro de entrega Kafka no tópico {Topic}: {Reason}", topic, pEx.Error.Reason);
+                return Result.Failure(TL.Messaging.Abstractions.Error.Failure("Kafka.DeliveryError", "Falha na entrega da mensagem ao tópico Kafka."));
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Erro inesperado ao produzir para o tópico Kafka {Topic}", topic);
+                return Result.Failure(TL.Messaging.Abstractions.Error.Failure("Kafka.PublishError", "Erro inesperado na comunicação com o Apache Kafka."));
+            }
+        }
+
+        private static void PopulateTracingHeaders<T>(Headers headers, EventMessage<T> eventEnvelope, EventMetadata? metadata) where T : class
+        {
+            headers.Add("correlation-id", Encoding.UTF8.GetBytes(eventEnvelope.CorrelationId));
+            headers.Add("event-type", Encoding.UTF8.GetBytes(eventEnvelope.EventType));
+            headers.Add("event-id", Encoding.UTF8.GetBytes(eventEnvelope.EventId.ToString()));
+
+            if (metadata?.Headers == null) return;
+
+            foreach (var (k, v) in metadata.Headers)
+            {
+                headers.Add(k, Encoding.UTF8.GetBytes(v ?? string.Empty));
+            }
+        }
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            FlushAndDisposeProducerSafely();
+        }
+
+        private void FlushAndDisposeProducerSafely()
+        {
+            try
+            {
+                _producer.Flush(TimeSpan.FromSeconds(5));
+                _producer.Dispose();
+            }
+            catch (Exception)
+            {
+                // Supressão defensiva no encerramento de recursos
+            }
+        }
+    }
+}
+
