@@ -24,8 +24,8 @@ Biblioteca corporativa de mensageria assíncrona resiliente para ecossistemas de
 | Projeto / Pacote | Descrição |
 | :--- | :--- |
 | **`TL.BaseContracts`** | Fundação corporativa de contratos em BCL pura (`IEventProducer`, `IEventHandler<T>`, `EventMessage<T>`, `EventMetadata`, `Result`). |
-| **`TL.Messaging.RabbitMQ`** | Adaptador AMQP 0-9-1 com topologia automática de Exchange/Queue/DLQ e Publisher Confirms. |
-| **`TL.Messaging.Kafka`** | Adaptador Apache Kafka com controle de partição, headers de telemetria, commit manual e DLT. |
+| **`TL.RabbitMQ`** (`TL.Messaging.RabbitMQ`) | Adaptador AMQP 0-9-1 com topologia automática de Exchange/Queue/DLQ e Publisher Confirms. |
+| **`TL.Kafka`** (`TL.Messaging.Kafka`) | Adaptador Apache Kafka com controle de partição, headers de telemetria, commit manual e DLT. |
 | **`TL.Messaging.Showcase.Api`** | Vitrine técnica executável (Minimal API com Swagger) para publicação e consumo nos brokers. |
 | **`TL.Messaging.RabbitMQ.Tests`** | Suíte de testes unitários do adaptador RabbitMQ. |
 | **`TL.Messaging.Kafka.Tests`** | Suíte de testes unitários do adaptador Apache Kafka. |

@@ -13,7 +13,7 @@
 Adicione o pacote ao seu projeto via .NET CLI:
 
 ```bash
-dotnet add package TL.Messaging.RabbitMQ --version 0.1.0
+dotnet add package TL.RabbitMQ --version 0.2.0
 ```
 
 ---

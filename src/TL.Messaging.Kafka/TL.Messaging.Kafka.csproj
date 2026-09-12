@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageId>TL.Messaging.Kafka</PackageId>
+    <PackageId>TL.Kafka</PackageId>
     <Description>Adaptador resiliente de Apache Kafka implementando a abstração unificada IEventProducer e IEventHandler com suporte a controle de partição, headers CloudEvents, Dead-Letter Topic (.dlt) e DI para .NET 8 e .NET 9.</Description>
     <PackageTags>kafka;confluent;messaging;event-driven;dlt;idempotence;polly;csharp;dotnet;net8;net9;tl</PackageTags>
   </PropertyGroup>

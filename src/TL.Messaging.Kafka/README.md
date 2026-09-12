@@ -13,7 +13,7 @@
 Adicione o pacote ao seu projeto via .NET CLI:
 
 ```bash
-dotnet add package TL.Messaging.Kafka --version 0.1.0
+dotnet add package TL.Kafka --version 0.2.0
 ```
 
 ---
