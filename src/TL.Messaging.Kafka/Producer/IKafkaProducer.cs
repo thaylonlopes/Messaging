@@ -1,6 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
-using TL.Messaging.Abstractions;
+using TL.BaseContracts;
+using TL.BaseContracts.Messaging;
 
 namespace TL.Messaging.Kafka.Producer
 {

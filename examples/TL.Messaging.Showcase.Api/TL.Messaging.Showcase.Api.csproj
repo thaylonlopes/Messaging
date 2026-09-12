@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\TL.Messaging.Abstractions\TL.Messaging.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\TL.Messaging.RabbitMQ\TL.Messaging.RabbitMQ.csproj" />
     <ProjectReference Include="..\..\src\TL.Messaging.Kafka\TL.Messaging.Kafka.csproj" />
   </ItemGroup>

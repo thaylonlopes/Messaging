@@ -1,6 +1,6 @@
 # 🚀 TL.Messaging.Showcase.Api
 
-> Aplicação executável e vitrine técnica demonstrando a utilização prática da suíte **TL.Messaging** (`TL.Messaging.Abstractions`, `TL.Messaging.RabbitMQ`, `TL.Messaging.Kafka`) em ASP.NET Core Minimal APIs (.NET 8 e .NET 9).
+> Aplicação executável e vitrine técnica demonstrando a utilização prática da suíte **TL.Messaging** (`TL.Messaging.RabbitMQ` e `TL.Messaging.Kafka` sobre `TL.BaseContracts`) em ASP.NET Core Minimal APIs (.NET 8 e .NET 9).
 
 ---
 

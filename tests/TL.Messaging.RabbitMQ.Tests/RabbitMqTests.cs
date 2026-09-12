@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,7 +9,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Moq;
 using RabbitMQ.Client;
-using TL.Messaging.Abstractions;
+using TL.BaseContracts;
+using TL.BaseContracts.Messaging;
 using TL.Messaging.RabbitMQ.Configuration;
 using TL.Messaging.RabbitMQ.Extensions;
 using TL.Messaging.RabbitMQ.Producer;
@@ -95,6 +96,7 @@ namespace TL.Messaging.RabbitMQ.Tests
 
             mockChannel.Setup(c => c.IsOpen).Returns(true);
             mockChannel.Setup(c => c.CreateBasicProperties()).Returns(mockProperties.Object);
+            mockChannel.Setup(c => c.WaitForConfirms(It.IsAny<TimeSpan>())).Returns(true);
             mockConnection.Setup(c => c.IsOpen).Returns(true);
             mockConnection.Setup(c => c.CreateModel()).Returns(mockChannel.Object);
             mockFactory.Setup(f => f.CreateConnection()).Returns(mockConnection.Object);
@@ -126,6 +128,7 @@ namespace TL.Messaging.RabbitMQ.Tests
 
             mockChannel.Setup(c => c.IsOpen).Returns(true);
             mockChannel.Setup(c => c.CreateBasicProperties()).Returns(mockProperties.Object);
+            mockChannel.Setup(c => c.WaitForConfirms(It.IsAny<TimeSpan>())).Returns(true);
             mockConnection.Setup(c => c.IsOpen).Returns(true);
             mockConnection.Setup(c => c.CreateModel()).Returns(mockChannel.Object);
             mockFactory.Setup(f => f.CreateConnection()).Returns(mockConnection.Object);

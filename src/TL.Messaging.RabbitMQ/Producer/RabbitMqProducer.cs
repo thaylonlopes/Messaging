@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using TL.Messaging.Abstractions;
+using TL.BaseContracts;
+using TL.BaseContracts.Messaging;
 using TL.Messaging.RabbitMQ.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -16,6 +17,12 @@ namespace TL.Messaging.RabbitMQ.Producer
     /// </summary>
     public class RabbitMqProducer : IRabbitMqProducer, IDisposable
     {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
         private readonly RabbitMqOptions _options;
         private readonly IConnectionFactory _connectionFactory;
         private readonly ILogger<RabbitMqProducer>? _logger;
@@ -111,7 +118,7 @@ namespace TL.Messaging.RabbitMQ.Producer
                     eventType: typeof(T).Name,
                     headers: metadata?.Headers);
 
-                byte[] body = JsonSerializer.SerializeToUtf8Bytes(eventEnvelope);
+                byte[] body = JsonSerializer.SerializeToUtf8Bytes(eventEnvelope, JsonOptions);
 
                 IBasicProperties properties = _channel!.CreateBasicProperties();
                 properties.Persistent = true;
@@ -136,6 +143,13 @@ namespace TL.Messaging.RabbitMQ.Producer
                         routingKey: routingKey,
                         basicProperties: properties,
                         body: body);
+
+                    bool confirmed = _channel.WaitForConfirms(TimeSpan.FromSeconds(5));
+                    if (!confirmed)
+                    {
+                        _logger?.LogWarning("Mensagem {EventType} não confirmada pelo broker RabbitMQ (NACK recebido).", eventEnvelope.EventType);
+                        return Task.FromResult(Result.Failure(Error.Failure("RabbitMq.PublishNack", "O broker RabbitMQ não confirmou a entrega da mensagem (NACK recebido).")));
+                    }
                 }
 
                 _logger?.LogDebug("Mensagem {EventType} publicada com sucesso no RabbitMQ (Exchange: {Exchange}, RoutingKey: {RoutingKey})",
@@ -187,14 +201,21 @@ namespace TL.Messaging.RabbitMQ.Producer
         {
             try
             {
-                _channel?.Close();
+                if (_channel?.IsOpen == true)
+                {
+                    _channel.Close();
+                }
                 _channel?.Dispose();
-                _connection?.Close();
+
+                if (_connection?.IsOpen == true)
+                {
+                    _connection.Close();
+                }
                 _connection?.Dispose();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Supressão defensiva no encerramento de recursos
+                _logger?.LogWarning(ex, "Falha não-bloqueante ao encerrar recursos de conexão do RabbitMQ no descarte.");
             }
         }
     }

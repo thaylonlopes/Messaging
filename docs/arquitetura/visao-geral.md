@@ -7,7 +7,7 @@ O **TL.Messaging** é o ecossistema corporativo de mensageria assíncrona resili
 O repositório fornece uma abstração unificada e desacoplada para sistemas orientados a eventos (Event-Driven Architecture), permitindo que a camada de domínio e aplicação interaja com mensageria sem conhecer detalhes de baixo nível dos brokers físicos (**RabbitMQ** ou **Apache Kafka**).
 
 A suíte é composta por:
-1. **`TL.Messaging.Abstractions`**: Contratos puros de portas (`IEventProducer`, `IEventHandler<T>`), envelope `EventMessage<T>` compatível com CloudEvents v1.0, metadados contextuais (`EventMetadata`) e envelope funcional de resultado (`Result`, `Error`). **Zero dependências externas**.
+1. **`TL.BaseContracts`**: Fundação corporativa de portas agnósticas universais (`IEventProducer`, `IEventHandler<T>`), envelope `EventMessage<T>` compatível com CloudEvents v1.0, metadados contextuais (`EventMetadata`) e envelope funcional (`Result`, `Error`). **Zero dependências externas**, consumido via NuGet oficial.
 2. **`TL.Messaging.RabbitMQ`**: Adaptador AMQP 0-9-1 com suporte a Publisher Confirms, topologia automática idempotente de Exchanges, Filas e Dead-Letter Queue (`.dlq`), e retentativas exponenciais com Polly.
 3. **`TL.Messaging.Kafka`**: Adaptador Apache Kafka com controle de partição por chave, idempotência nativa (`Acks.All`), commit manual de offsets e redirecionamento para Dead-Letter Topic (`.dlt`).
 4. **`TL.Messaging.Showcase.Api`**: Aplicação de vitrine técnica (Minimal API em .NET 8/.NET 9 com Swagger) demonstrando publicação e consumo em ambos os brokers.
@@ -42,7 +42,7 @@ graph TD
         Handler["Manipulador de Negócio<br/>(IEventHandler&lt;TOrder&gt;)"]
     end
 
-    subgraph "TL.Messaging.Abstractions (Porta Base / Contratos)"
+    subgraph "TL.BaseContracts (Fundação de Contratos NuGet)"
         ProducerPort["IEventProducer<br/>(PublishAsync, PublishBatchAsync)"]
         HandlerPort["IEventHandler&lt;T&gt;<br/>(HandleAsync)"]
         Envelope["EventMessage&lt;T&gt;<br/>(EventId, CorrelationId, Timestamp, Payload)"]
@@ -90,7 +90,6 @@ graph TD
 
 | ADR | Projeto | Foco Arquitetural |
 | :--- | :--- | :--- |
-| [**`ADR-000`**](../adr/ADR-000-arquitetura-mensageria-resiliente-e-governanca.md) | `TL.Messaging` (Geral) | Visão Geral, Ports & Adapters, Governança CPM e Resiliência. |
-| [**`ADR-001`**](../adr/ADR-001-tl-messaging-abstractions.md) | `TL.Messaging.Abstractions` | Ports & Adapters, CloudEvents, Result Pattern e Governança CPM. |
-| [**`ADR-002`**](../adr/ADR-002-tl-rabbitmq.md) | `TL.Messaging.RabbitMQ` | Adaptador AMQP, Publisher Confirms, Topologia Automática e DLQ. |
-| [**`ADR-003`**](../adr/ADR-003-tl-kafka.md) | `TL.Messaging.Kafka` | Adaptador Kafka, Partition Keys, Idempotência e Dead-Letter Topic. |
+| [**`ADR-000`**](../adr/ADR-000-arquitetura-mensageria-resiliente-e-governanca.md) | `TL.Messaging` (Geral) | Visão Geral, Ports & Adapters com `TL.BaseContracts`, Governança CPM e Resiliência. |
+| [**`ADR-001`**](../adr/ADR-001-tl-rabbitmq.md) | `TL.Messaging.RabbitMQ` | Adaptador AMQP, Publisher Confirms, Topologia Automática e DLQ. |
+| [**`ADR-002`**](../adr/ADR-002-tl-kafka.md) | `TL.Messaging.Kafka` | Adaptador Kafka, Partition Keys, Idempotência e Dead-Letter Topic. |

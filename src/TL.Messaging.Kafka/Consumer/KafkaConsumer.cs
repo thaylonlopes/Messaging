@@ -3,9 +3,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using TL.BaseContracts.Messaging;
 using TL.Messaging.Kafka.Configuration;
 using TL.Messaging.Kafka.Producer;
-using TL.Messaging.Abstractions;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -24,10 +24,17 @@ namespace TL.Messaging.Kafka.Consumer
         where TEvent : class
         where THandler : IEventHandler<TEvent>
     {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
         private readonly KafkaOptions _options;
         private readonly IServiceProvider _serviceProvider;
         private readonly IKafkaProducer? _dltProducer;
         private readonly ILogger<KafkaConsumer<TEvent, THandler>>? _logger;
+        private readonly AsyncPolicy _retryPolicy;
         private readonly string _topic;
         private readonly string _dltTopic;
 
@@ -49,6 +56,10 @@ namespace TL.Messaging.Kafka.Consumer
             string eventName = typeof(TEvent).Name.ToLowerInvariant();
             _topic = string.IsNullOrWhiteSpace(topic) ? $"events.{eventName}" : topic;
             _dltTopic = $"{_topic}{_options.DeadLetterTopicSuffix}";
+
+            _retryPolicy = Policy
+                .Handle<Exception>()
+                .WaitAndRetryAsync(_options.RetryCount, attempt => TimeSpan.FromMilliseconds(200 * Math.Pow(2, attempt - 1)));
         }
 
         /// <inheritdoc />
@@ -107,15 +118,15 @@ namespace TL.Messaging.Kafka.Consumer
             }
         }
 
-        private static void CloseConsumerSafely(IConsumer<string, string> consumer)
+        private void CloseConsumerSafely(IConsumer<string, string> consumer)
         {
             try
             {
                 consumer.Close();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Supressão defensiva no encerramento da conexão
+                _logger?.LogWarning(ex, "Falha não-bloqueante ao encerrar consumidor do Apache Kafka no descarte.");
             }
         }
 
@@ -128,11 +139,11 @@ namespace TL.Messaging.Kafka.Consumer
 
             try
             {
-                var eventMessage = JsonSerializer.Deserialize<EventMessage<TEvent>>(rawJson);
+                var eventMessage = JsonSerializer.Deserialize<EventMessage<TEvent>>(rawJson, JsonOptions);
                 if (eventMessage == null || eventMessage.Payload == null)
                 {
                     _logger?.LogWarning("Mensagem nula ou inválida recebida no tópico {Topic}. Enviando para DLT.", _topic);
-                    await ForwardToDltAsync(consumeResult.Message.Key, rawJson, stoppingToken).ConfigureAwait(false);
+                    await ForwardToDltAsync(consumeResult.Message.Key, rawJson, "Payload inválido ou nulo", stoppingToken).ConfigureAwait(false);
                     consumer.Commit(consumeResult);
                     return;
                 }
@@ -140,13 +151,9 @@ namespace TL.Messaging.Kafka.Consumer
                 using var scope = _serviceProvider.CreateScope();
                 var handler = scope.ServiceProvider.GetRequiredService<THandler>();
 
-                var retryPolicy = Policy
-                    .Handle<Exception>()
-                    .WaitAndRetryAsync(_options.RetryCount, attempt => TimeSpan.FromMilliseconds(200 * Math.Pow(2, attempt - 1)));
-
-                var result = await retryPolicy.ExecuteAsync(async () =>
+                var result = await _retryPolicy.ExecuteAsync(async () =>
                     await handler.HandleAsync(eventMessage, stoppingToken).ConfigureAwait(false)
-                );
+                ).ConfigureAwait(false);
 
                 if (result.IsSuccess)
                 {
@@ -157,25 +164,36 @@ namespace TL.Messaging.Kafka.Consumer
                 {
                     _logger?.LogWarning("Handler falhou [{Code}]: {Message}. Encaminhando mensagem para DLT {DltTopic}.",
                         result.Error.Code, result.Error.Message, _dltTopic);
-                    await ForwardToDltAsync(consumeResult.Message.Key, rawJson, stoppingToken).ConfigureAwait(false);
+                    await ForwardToDltAsync(consumeResult.Message.Key, rawJson, $"{result.Error.Code}: {result.Error.Message}", stoppingToken).ConfigureAwait(false);
                     consumer.Commit(consumeResult); // Commit no tópico principal após encaminhar para DLT
                 }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Exceção não tratada ao processar mensagem no tópico {Topic}. Encaminhando para DLT.", _topic);
-                await ForwardToDltAsync(consumeResult.Message.Key, rawJson, stoppingToken).ConfigureAwait(false);
+                await ForwardToDltAsync(consumeResult.Message.Key, rawJson, ex.Message, stoppingToken).ConfigureAwait(false);
                 consumer.Commit(consumeResult);
             }
         }
 
-        private async Task ForwardToDltAsync(string key, string rawJson, CancellationToken stoppingToken)
+        private async Task ForwardToDltAsync(string key, string rawJson, string reason, CancellationToken stoppingToken)
         {
             if (_dltProducer == null) return;
 
             try
             {
-                var metadata = new EventMetadata().WithKafkaPartitionKey(key);
+                var headers = new Dictionary<string, string>
+                {
+                    ["x-dlt-original-topic"] = _topic,
+                    ["x-dlt-reason"] = reason,
+                    ["x-dlt-timestamp-utc"] = DateTimeOffset.UtcNow.ToString("O")
+                };
+
+                var metadata = new EventMetadata
+                {
+                    Headers = headers
+                }.WithKafkaPartitionKey(key);
+
                 await _dltProducer.ProduceToTopicAsync(_dltTopic, key, rawJson, metadata, stoppingToken).ConfigureAwait(false);
                 _logger?.LogInformation("Mensagem encaminhada com sucesso para o Dead Letter Topic {DltTopic}", _dltTopic);
             }

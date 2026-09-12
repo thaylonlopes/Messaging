@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using TL.Messaging.Abstractions;
+using TL.BaseContracts;
+using TL.BaseContracts.Messaging;
 using TL.Messaging.Kafka.Extensions;
 using TL.Messaging.Kafka.Producer;
 using TL.Messaging.RabbitMQ.Extensions;

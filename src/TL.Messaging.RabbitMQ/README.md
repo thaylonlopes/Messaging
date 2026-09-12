@@ -46,7 +46,7 @@ app.Run();
 Sua camada de aplicação ou domínio depende apenas da interface agnóstica `IEventProducer`:
 
 ```csharp
-using TL.Messaging.Abstractions;
+using TL.BaseContracts.Messaging;
 
 public class OrderService
 {
@@ -72,7 +72,8 @@ public class OrderService
 ### 3. Consumindo Eventos (`IEventHandler<T>`)
 
 ```csharp
-using TL.Messaging.Abstractions;
+using TL.BaseContracts;
+using TL.BaseContracts.Messaging;
 
 public class OrderCreatedHandler : IEventHandler<OrderCreatedEvent>
 {

@@ -2,7 +2,7 @@ using System;
 using TL.Messaging.Kafka.Configuration;
 using TL.Messaging.Kafka.Consumer;
 using TL.Messaging.Kafka.Producer;
-using TL.Messaging.Abstractions;
+using TL.BaseContracts.Messaging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <PackageId>TL.Messaging.Kafka</PackageId>
@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TL.Messaging.Abstractions\TL.Messaging.Abstractions.csproj" />
+    <PackageReference Include="TL.BaseContracts" />
   </ItemGroup>
 
   <ItemGroup>

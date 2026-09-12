@@ -1,5 +1,5 @@
 using System;
-using TL.Messaging.Abstractions;
+using TL.BaseContracts.Messaging;
 using TL.Messaging.RabbitMQ.Configuration;
 using TL.Messaging.RabbitMQ.Consumer;
 using TL.Messaging.RabbitMQ.Producer;

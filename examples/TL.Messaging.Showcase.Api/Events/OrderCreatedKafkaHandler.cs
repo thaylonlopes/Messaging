@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
-using TL.Messaging.Abstractions;
+using TL.BaseContracts;
+using TL.BaseContracts.Messaging;
 
 namespace TL.Messaging.Showcase.Api.Events;
 

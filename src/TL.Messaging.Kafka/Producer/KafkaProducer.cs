@@ -4,8 +4,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using TL.BaseContracts;
+using TL.BaseContracts.Messaging;
 using TL.Messaging.Kafka.Configuration;
-using TL.Messaging.Abstractions;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,6 +18,12 @@ namespace TL.Messaging.Kafka.Producer
     /// </summary>
     public class KafkaProducer : IKafkaProducer, IDisposable
     {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
         private readonly KafkaOptions _options;
         private readonly IProducer<string, string> _producer;
         private readonly ILogger<KafkaProducer>? _logger;
@@ -96,7 +103,7 @@ namespace TL.Messaging.Kafka.Producer
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    return Result.Failure(TL.Messaging.Abstractions.Error.Failure("Kafka.Cancellation", "Operação de publicação em lote cancelada."));
+                    return Result.Failure(TL.BaseContracts.Error.Failure("Kafka.Cancellation", "Operação de publicação em lote cancelada."));
                 }
 
                 var result = await PublishAsync(message, metadata, cancellationToken).ConfigureAwait(false);
@@ -129,7 +136,7 @@ namespace TL.Messaging.Kafka.Producer
                     eventType: typeof(T).Name,
                     headers: metadata?.Headers);
 
-                string jsonPayload = JsonSerializer.Serialize(eventEnvelope);
+                string jsonPayload = JsonSerializer.Serialize(eventEnvelope, JsonOptions);
 
                 var kafkaMessage = new Message<string, string>
                 {
@@ -151,12 +158,12 @@ namespace TL.Messaging.Kafka.Producer
             catch (ProduceException<string, string> pEx)
             {
                 _logger?.LogError(pEx, "Erro de entrega Kafka no tópico {Topic}: {Reason}", topic, pEx.Error.Reason);
-                return Result.Failure(TL.Messaging.Abstractions.Error.Failure("Kafka.DeliveryError", "Falha na entrega da mensagem ao tópico Kafka."));
+                return Result.Failure(TL.BaseContracts.Error.Failure("Kafka.DeliveryError", "Falha na entrega da mensagem ao tópico Kafka."));
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Erro inesperado ao produzir para o tópico Kafka {Topic}", topic);
-                return Result.Failure(TL.Messaging.Abstractions.Error.Failure("Kafka.PublishError", "Erro inesperado na comunicação com o Apache Kafka."));
+                return Result.Failure(TL.BaseContracts.Error.Failure("Kafka.PublishError", "Erro inesperado na comunicação com o Apache Kafka."));
             }
         }
 
@@ -190,9 +197,9 @@ namespace TL.Messaging.Kafka.Producer
                 _producer.Flush(TimeSpan.FromSeconds(5));
                 _producer.Dispose();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Supressão defensiva no encerramento de recursos
+                _logger?.LogWarning(ex, "Falha não-bloqueante ao descarregar e descartar produtor do Apache Kafka no descarte.");
             }
         }
     }

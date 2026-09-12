@@ -21,14 +21,14 @@ Biblioteca corporativa de mensageria assíncrona resiliente para ecossistemas de
 
 ## 📦 Estrutura de Projetos
 
-| Projeto | Descrição |
+| Projeto / Pacote | Descrição |
 | :--- | :--- |
-| **`TL.Messaging.Abstractions`** | Contratos agnósticos fundamentais (`IEventProducer`, `IEventHandler<T>`, `EventMessage<T>`, `EventMetadata`, `Result`). |
+| **`TL.BaseContracts`** | Fundação corporativa de contratos em BCL pura (`IEventProducer`, `IEventHandler<T>`, `EventMessage<T>`, `EventMetadata`, `Result`). |
 | **`TL.Messaging.RabbitMQ`** | Adaptador AMQP 0-9-1 com topologia automática de Exchange/Queue/DLQ e Publisher Confirms. |
 | **`TL.Messaging.Kafka`** | Adaptador Apache Kafka com controle de partição, headers de telemetria, commit manual e DLT. |
 | **`TL.Messaging.Showcase.Api`** | Vitrine técnica executável (Minimal API com Swagger) para publicação e consumo nos brokers. |
-| **`TL.Messaging.RabbitMQ.Tests`** | Suíte de testes unitários e de integração do adaptador RabbitMQ. |
-| **`TL.Messaging.Kafka.Tests`** | Suíte de testes unitários e de integração do adaptador Apache Kafka. |
+| **`TL.Messaging.RabbitMQ.Tests`** | Suíte de testes unitários do adaptador RabbitMQ. |
+| **`TL.Messaging.Kafka.Tests`** | Suíte de testes unitários do adaptador Apache Kafka. |
 
 ---
 
@@ -37,7 +37,8 @@ Biblioteca corporativa de mensageria assíncrona resiliente para ecossistemas de
 ### 1. Definindo um Evento e Manipulador
 
 ```csharp
-using TL.Messaging.Abstractions;
+using TL.BaseContracts;
+using TL.BaseContracts.Messaging;
 
 public record OrderCreatedEvent(string OrderId, decimal TotalAmount);
 

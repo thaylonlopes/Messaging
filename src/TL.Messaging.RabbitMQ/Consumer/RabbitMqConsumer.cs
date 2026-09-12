@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using TL.Messaging.Abstractions;
+using TL.BaseContracts;
+using TL.BaseContracts.Messaging;
 using TL.Messaging.RabbitMQ.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -24,10 +25,17 @@ namespace TL.Messaging.RabbitMQ.Consumer
         where TEvent : class
         where THandler : IEventHandler<TEvent>
     {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
         private readonly RabbitMqOptions _options;
         private readonly IServiceProvider _serviceProvider;
         private readonly IConnectionFactory _connectionFactory;
         private readonly ILogger<RabbitMqConsumer<TEvent, THandler>>? _logger;
+        private readonly AsyncPolicy _retryPolicy;
         private readonly string _queueName;
         private readonly string _routingKey;
 
@@ -62,6 +70,10 @@ namespace TL.Messaging.RabbitMQ.Consumer
                 VirtualHost = _options.VirtualHost,
                 DispatchConsumersAsync = true
             };
+
+            _retryPolicy = Policy
+                .Handle<Exception>()
+                .WaitAndRetryAsync(_options.RetryCount, attempt => TimeSpan.FromMilliseconds(200 * Math.Pow(2, attempt - 1)));
         }
 
         /// <inheritdoc />
@@ -131,12 +143,11 @@ namespace TL.Messaging.RabbitMQ.Consumer
 
         private async Task ProcessMessageAsync(BasicDeliverEventArgs ea, CancellationToken stoppingToken)
         {
-            byte[] body = ea.Body.ToArray();
             ulong deliveryTag = ea.DeliveryTag;
 
             try
             {
-                var eventMessage = JsonSerializer.Deserialize<EventMessage<TEvent>>(body);
+                var eventMessage = JsonSerializer.Deserialize<EventMessage<TEvent>>(ea.Body.Span, JsonOptions);
                 if (eventMessage == null || eventMessage.Payload == null)
                 {
                     _logger?.LogWarning("Mensagem inválida ou nula recebida na fila {Queue}. Encaminhando para DLQ.", _queueName);
@@ -170,13 +181,9 @@ namespace TL.Messaging.RabbitMQ.Consumer
             using var scope = _serviceProvider.CreateScope();
             var handler = scope.ServiceProvider.GetRequiredService<THandler>();
 
-            var retryPolicy = Policy
-                .Handle<Exception>()
-                .WaitAndRetryAsync(_options.RetryCount, attempt => TimeSpan.FromMilliseconds(200 * Math.Pow(2, attempt - 1)));
-
-            return await retryPolicy.ExecuteAsync(async () =>
+            return await _retryPolicy.ExecuteAsync(async () =>
                 await handler.HandleAsync(eventMessage, stoppingToken).ConfigureAwait(false)
-            );
+            ).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
@@ -190,14 +197,21 @@ namespace TL.Messaging.RabbitMQ.Consumer
         {
             try
             {
-                _channel?.Close();
+                if (_channel?.IsOpen == true)
+                {
+                    _channel.Close();
+                }
                 _channel?.Dispose();
-                _connection?.Close();
+
+                if (_connection?.IsOpen == true)
+                {
+                    _connection.Close();
+                }
                 _connection?.Dispose();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Supressão defensiva no encerramento de recursos
+                _logger?.LogWarning(ex, "Falha não-bloqueante ao encerrar recursos de conexão do consumidor RabbitMQ no descarte.");
             }
         }
     }

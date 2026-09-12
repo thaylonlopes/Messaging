@@ -18,8 +18,8 @@ A biblioteca dedicada **`TL.Messaging`** foi criada para isolar e governar a men
 
 ### 2.1. Arquitetura Ports & Adapters (Hexagonal Architecture)
 A solução adota estritamente a segregação de responsabilidades entre contratos de negócio e implementações físicas:
-- **Porta Base (`TL.Messaging.Abstractions`):** Contratos agnósticos de produção e consumo (`IEventProducer`, `IEventHandler<T>`), envelope padronizado `EventMessage<T>` compatível com CloudEvents v1.0, metadados contextuais (`EventMetadata`) e envelope funcional (`Result`, `Error`). **100% BCL pura, sem dependências externas**.
-- **Adapters de Infraestrutura (`TL.Messaging.RabbitMQ`, `TL.Messaging.Kafka`):** Especializam a comunicação de rede com os respectivos brokers, gerenciando conexões, serialização, resiliência, confirmações de entrega e criação automática de topologias contingenciais.
+- **Porta Base Fundacional ([`TL.BaseContracts.Messaging`](https://www.nuget.org/packages/TL.BaseContracts/0.2.0)):** Contratos agnósticos universais de produção e consumo (`IEventProducer`, `IEventHandler<T>`), envelope padronizado `EventMessage<T>` compatível com CloudEvents v1.0, metadados contextuais (`EventMetadata`) e envelope funcional (`Result`, `Error`). **100% BCL pura, sem dependências externas**, provido diretamente pelo pacote corporativo base do ecossistema.
+- **Adapters de Infraestrutura (`TL.Messaging.RabbitMQ`, `TL.Messaging.Kafka`):** Especializam a comunicação de rede com os respectivos brokers, gerenciando conexões, serialização, resiliência, confirmações de entrega e criação automática de topologias contingenciais, implementando diretamente as interfaces de `TL.BaseContracts.Messaging`.
 
 ### 2.2. Multi-Targeting Moderno (.NET 8 e .NET 9)
 Todos os projetos da solução suportam compilação multi-target para as versões ativas do ecossistema .NET:
@@ -27,7 +27,7 @@ Todos os projetos da solução suportam compilação multi-target para as versõ
 - Eliminação definitiva de runtimes descontinuados (`.NET 6.0`).
 
 ### 2.3. Governança via Central Package Management (CPM)
-- Centralização de todas as versões de pacotes corporativos no arquivo raiz `Directory.Packages.props` (`RabbitMQ.Client 6.8.1`, `Confluent.Kafka 2.5.3`, `Polly 8.4.1`, `Swashbuckle.AspNetCore 6.5.0`, etc.).
+- Centralização de todas as versões de pacotes corporativos no arquivo raiz `Directory.Packages.props` (`TL.BaseContracts 0.2.0`, `RabbitMQ.Client 6.8.1`, `Confluent.Kafka 2.5.3`, `Polly 8.4.1`, `Swashbuckle.AspNetCore 6.5.0`, etc.).
 - Compilação com qualidade estrita habilitada em `Directory.Build.props`:
   - `<Nullable>enable</Nullable>`
   - `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`
@@ -45,7 +45,8 @@ Todos os projetos da solução suportam compilação multi-target para as versõ
 ## ⚖️ 3. Consequências e Trade-offs
 
 ### ✅ Vantagens:
-- **Desacoplamento Absoluto:** Domínio e aplicação dependem apenas de `TL.Messaging.Abstractions`. Trocar de RabbitMQ para Kafka torna-se uma mera alteração de registro de injeção de dependência (`AddRabbitMqMessaging` vs `AddKafkaMessaging`).
+- **Desacoplamento Absoluto:** Domínio e aplicação dependem apenas de `TL.BaseContracts`. Trocar de RabbitMQ para Kafka torna-se uma mera alteração de registro de injeção de dependência (`AddRabbitMqMessaging` vs `AddKafkaMessaging`).
+- **Simplicidade & Zero Duplicação:** Inexistência de camadas intermediárias redundantes. O ecossistema compartilha uma única assinatura para `Result`, `Error`, `EventMessage` e `IEventProducer`.
 - **Previsibilidade Operacional:** Zero filas travadas por *poison messages* graças ao tratamento nativo de DLQ e DLT.
 - **Rastreabilidade Distribuída:** Propagação de `CorrelationId` e headers garante observabilidade ponta a ponta em ferramentas de APM e OpenTelemetry.
 - **Qualidade Rigorosa:** Compilação com zero warnings e 100% dos testes unitários verdes em .NET 8 e .NET 9.
@@ -59,8 +60,7 @@ Todos os projetos da solução suportam compilação multi-target para as versõ
 
 | ADR | Projeto | Foco Arquitetural |
 | :--- | :--- | :--- |
-| **`ADR-000`** | `TL.Messaging` (Geral) | Visão Geral, Ports & Adapters, Governança CPM e Resiliência. |
-| [**`ADR-001`**](ADR-001-tl-messaging-abstractions.md) | `TL.Messaging.Abstractions` | Contratos agnósticos, envelope CloudEvents v1.0 e Result Pattern. |
-| [**`ADR-002`**](ADR-002-tl-rabbitmq.md) | `TL.Messaging.RabbitMQ` | Adaptador AMQP, Publisher Confirms, Topologia Automática e DLQ. |
-| [**`ADR-003`**](ADR-003-tl-kafka.md) | `TL.Messaging.Kafka` | Adaptador Kafka, Partition Keys, Idempotência e Dead-Letter Topic. |
+| **`ADR-000`** | `TL.Messaging` (Geral) | Visão Geral, Ports & Adapters com `TL.BaseContracts`, Governança CPM e Resiliência. |
+| [**`ADR-001`**](ADR-001-tl-rabbitmq.md) | `TL.Messaging.RabbitMQ` | Adaptador AMQP, Publisher Confirms, Topologia Automática e DLQ. |
+| [**`ADR-002`**](ADR-002-tl-kafka.md) | `TL.Messaging.Kafka` | Adaptador Kafka, Partition Keys, Idempotência e Dead-Letter Topic. |
 
