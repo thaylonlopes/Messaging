@@ -1,4 +1,4 @@
-# ADR-002: Decisões Arquiteturais do Pacote TL.Messaging.Kafka
+# ADR-002: Decisões Arquiteturais do Pacote TL.Kafka (TL.Messaging.Kafka)
 
 ## 📋 1. Contexto e Motivação
 
@@ -6,7 +6,7 @@ O Apache Kafka é a plataforma padrão da indústria para streaming de eventos d
 
 Sem abstração, microsserviços acabavam implementando consumidores com comportamentos divergentes (como auto-commit prematuro que causa perda de mensagens em caso de crash do pod ou reinicialização de contêiner).
 
-No repositório `TL.Messaging`, o pacote **`TL.Messaging.Kafka`** implementa o adaptador de infraestrutura Kafka conectado diretamente aos contratos fundamentais de [`TL.BaseContracts.Messaging`](https://www.nuget.org/packages/TL.BaseContracts/0.2.0).
+No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto `TL.Messaging.Kafka`) implementa o adaptador de infraestrutura Kafka conectado diretamente aos contratos fundamentais de [`TL.BaseContracts.Messaging`](https://www.nuget.org/packages/TL.BaseContracts/0.2.0).
 
 ---
 

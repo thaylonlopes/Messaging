@@ -1,4 +1,4 @@
-# ADR-001: Decisões Arquiteturais do Pacote TL.Messaging.RabbitMQ
+# ADR-001: Decisões Arquiteturais do Pacote TL.RabbitMQ (TL.Messaging.RabbitMQ)
 
 ## 📋 1. Contexto e Motivação
 
@@ -6,7 +6,7 @@ O RabbitMQ é amplamente utilizado em arquiteturas orientadas a eventos para men
 
 Sem uma camada padronizada, cada microsserviço implementava sua própria lógica de retentativas, gerando perda silenciosa de mensagens ou filas de trabalho bloqueadas por *poison messages*.
 
-No repositório `TL.Messaging`, o pacote **`TL.Messaging.RabbitMQ`** implementa o adaptador de infraestrutura AMQP conectado diretamente aos contratos fundamentais de [`TL.BaseContracts.Messaging`](https://www.nuget.org/packages/TL.BaseContracts/0.2.0).
+No repositório `TL.Messaging`, o pacote publicado como **`TL.RabbitMQ`** (projeto `TL.Messaging.RabbitMQ`) implementa o adaptador de infraestrutura AMQP conectado diretamente aos contratos fundamentais de [`TL.BaseContracts.Messaging`](https://www.nuget.org/packages/TL.BaseContracts/0.2.0).
 
 ---
 
