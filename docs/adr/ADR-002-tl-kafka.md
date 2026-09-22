@@ -6,7 +6,7 @@ O Apache Kafka é a plataforma padrão da indústria para streaming de eventos d
 
 Sem abstração, microsserviços acabavam implementando consumidores com comportamentos divergentes (como auto-commit prematuro que causa perda de mensagens em caso de crash do pod ou reinicialização de contêiner).
 
-No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto `TL.Messaging.Kafka`) implementa o adaptador de infraestrutura Kafka conectado diretamente aos contratos fundamentais de [`TL.BaseContracts.Messaging`](https://www.nuget.org/packages/TL.BaseContracts/0.2.0).
+No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto `TL.Messaging.Kafka`) implementa o adaptador de infraestrutura Kafka conectado diretamente aos contratos fundamentais de [`TL.BaseContracts.Messaging`](https://www.nuget.org/packages/TL.BaseContracts/0.3.1).
 
 ---
 
@@ -15,7 +15,7 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto 
 ### 2.1. Implementação da Porta Agnóstica `IEventProducer`
 - O `KafkaProducer` implementa `IEventProducer` e a interface especializada `IKafkaProducer`.
 - **Idempotência Nativa**: Configura `EnableIdempotence = true` e `Acks = Acks.All` por padrão, garantindo que retentativas de rede no broker não dupliquem eventos na partição.
-- **Particionamento por Chave**: Suporta `EventMetadata.WithKafkaPartitionKey(key)`, garantindo que mensagens relacionadas (ex: do mesmo cliente ou pedido) sejam roteadas para a mesma partição com ordenação estrita.
+- **Particionamento por Chave**: Suporta `EventMetadata.WithKafkaPartitionKey(key)` ou anotação declarativa `[PartitionKey]`, garantindo que mensagens relacionadas (ex: do mesmo cliente ou pedido) sejam roteadas para a mesma partição com ordenação estrita.
 - **Injeção Automática de Headers de Tracing**: Propaga `correlation-id`, `event-type` e `event-id` nos headers do Kafka para rastreamento no OpenTelemetry.
 
 ### 2.2. Consumidor Resiliente (`KafkaConsumer<TEvent, THandler>`)
@@ -27,6 +27,13 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto 
 - `services.AddKafkaMessaging(config)`
 - `services.AddKafkaConsumer<OrderCreatedEvent, OrderCreatedHandler>("events.orders.v1")`
 
+### 2.4. Publicação Ergonômica em 1 Linha e Atributo `[PartitionKey]`
+- Implementação das sobrecargas `PublishAsync(T message)` e `PublishAsync(string topic, T message)`.
+- Extração de chave de partição declarativa via `[PartitionKey]` e `EventMetadataExtractor` de `TL.BaseContracts` com cache $O(1)$.
+- Fallback seguro para chave nula (`Message.Key = null`), delegando ao particionador padrão (round-robin / sticky) do Apache Kafka quando o evento não é decorado com `[PartitionKey]`.
+- Inferência automática do tópico via `EventMetadataExtractor.GetTopicName<T>()`.
+- Disponibilização da classe derivada especializada `KafkaEventProducer`.
+
 ---
 
 ## ⚖️ 3. Consequências e Trade-offs
@@ -35,6 +42,7 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto 
 - **Alta Confiabilidade e Vazão:** Sem risco de perda de mensagens ou duplicidade acidental no broker.
 - **Transparência de Troca:** Facilidade de migração entre Kafka e RabbitMQ apenas alterando o registro no `Program.cs`.
 - **Multi-Target Moderno:** Compilado e validado em `.NET 8.0` e `.NET 9.0`.
+- **Ergonomia e Garantia de FIFO:** Elimina erros humanos na passagem de chaves de partição através do atributo declarativo `[PartitionKey]`.
 
 ### ⚠️ Desvantagens / Trade-offs:
 - A dependência de drivers nativos compilados em C/C++ (`librdkafka` empacotado no NuGet `Confluent.Kafka`) exige mais recursos de compilação e teste do que drivers AMQP puros.
@@ -42,4 +50,4 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto 
 ---
 
 ## 🧪 4. Status de Verificação
-- Coberto por **10 testes unitários automatizados** no `TL.Messaging.Kafka.Tests` (5 em .NET 8 e 5 em .NET 9 - 100% passing).
+- Coberto por **22 execuções de testes unitários automatizados** no `TL.Messaging.Kafka.Tests` (11 em .NET 8 e 11 em .NET 9 - 100% passing).

@@ -18,7 +18,7 @@ A biblioteca dedicada **`TL.Messaging`** foi criada para isolar e governar a men
 
 ### 2.1. Arquitetura Ports & Adapters (Hexagonal Architecture)
 A solução adota estritamente a segregação de responsabilidades entre contratos de negócio e implementações físicas:
-- **Porta Base Fundacional ([`TL.BaseContracts.Messaging`](https://www.nuget.org/packages/TL.BaseContracts/0.2.0)):** Contratos agnósticos universais de produção e consumo (`IEventProducer`, `IEventHandler<T>`), envelope padronizado `EventMessage<T>` compatível com CloudEvents v1.0, metadados contextuais (`EventMetadata`) e envelope funcional (`Result`, `Error`). **100% BCL pura, sem dependências externas**, provido diretamente pelo pacote corporativo base do ecossistema.
+- **Porta Base Fundacional ([`TL.BaseContracts.Messaging`](https://www.nuget.org/packages/TL.BaseContracts/0.3.1)):** Contratos agnósticos universais de produção e consumo (`IEventProducer`, `IEventHandler<T>`), interfaces de eventos (`IEvent`, `IIntegrationEvent`), envelope padronizado `EventMessage<T>` compatível com CloudEvents v1.0, anotações declarativas (`[PartitionKey]`, `[Topic]`, `[MessageId]`), extrator de metadados $O(1)$ (`EventMetadataExtractor`), metadados contextuais (`EventMetadata`) e envelope funcional (`Result`, `Error`). **100% BCL pura, sem dependências externas**, provido diretamente pelo pacote corporativo base do ecossistema.
 - **Adapters de Infraestrutura (`TL.Messaging.RabbitMQ`, `TL.Messaging.Kafka`):** Especializam a comunicação de rede com os respectivos brokers, gerenciando conexões, serialização, resiliência, confirmações de entrega e criação automática de topologias contingenciais, implementando diretamente as interfaces de `TL.BaseContracts.Messaging`.
 
 ### 2.2. Multi-Targeting Moderno (.NET 8 e .NET 9)
@@ -27,7 +27,7 @@ Todos os projetos da solução suportam compilação multi-target para as versõ
 - Eliminação definitiva de runtimes descontinuados (`.NET 6.0`).
 
 ### 2.3. Governança via Central Package Management (CPM)
-- Centralização de todas as versões de pacotes corporativos no arquivo raiz `Directory.Packages.props` (`TL.BaseContracts 0.2.0`, `RabbitMQ.Client 6.8.1`, `Confluent.Kafka 2.5.3`, `Polly 8.4.1`, `Swashbuckle.AspNetCore 6.5.0`, etc.).
+- Centralização de todas as versões de pacotes corporativos no arquivo raiz `Directory.Packages.props` (`TL.BaseContracts 0.3.1`, `RabbitMQ.Client 6.8.1`, `Confluent.Kafka 2.5.3`, `Polly 8.4.1`, `Swashbuckle.AspNetCore 6.5.0`, etc.).
 - Compilação com qualidade estrita habilitada em `Directory.Build.props`:
   - `<Nullable>enable</Nullable>`
   - `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`
@@ -35,7 +35,7 @@ Todos os projetos da solução suportam compilação multi-target para as versõ
 
 ### 2.4. Resiliência por Padrão (Resilience by Default)
 - **RabbitMQ:** Publisher Confirms ativados por padrão (`ConfirmSelect()`), declaração idempotente de topologia (Exchange principal, Fila principal, Dead-Letter Exchange `.dlx` e Dead-Letter Queue `.dlq`), retentativas inteligentes com Polly (backoff exponencial).
-- **Apache Kafka:** Publicação com garantia `Acks.All` e `EnableIdempotence = true`, suporte a partição estrita por chave (`EventMetadata.WithKafkaPartitionKey`), commit manual de offsets e redirecionamento seguro para Dead-Letter Topic (`.dlt`).
+- **Apache Kafka:** Publicação com garantia `Acks.All` e `EnableIdempotence = true`, suporte a partição estrita por chave (`EventMetadata.WithKafkaPartitionKey` ou anotação declarativa `[PartitionKey]`), commit manual de offsets e redirecionamento seguro para Dead-Letter Topic (`.dlt`).
 
 ### 2.5. Vitrine Técnica Executável (Showcase API)
 - Projeto executável Minimal API com documentação OpenAPI/Swagger em `examples/TL.Messaging.Showcase.Api`, demonstrando a publicação e consumo integrados para ambos os brokers.
@@ -61,6 +61,6 @@ Todos os projetos da solução suportam compilação multi-target para as versõ
 | ADR | Projeto | Foco Arquitetural |
 | :--- | :--- | :--- |
 | **`ADR-000`** | `TL.Messaging` (Geral) | Visão Geral, Ports & Adapters com `TL.BaseContracts`, Governança CPM e Resiliência. |
-| [**`ADR-001`**](ADR-001-tl-rabbitmq.md) | `TL.Messaging.RabbitMQ` | Adaptador AMQP, Publisher Confirms, Topologia Automática e DLQ. |
-| [**`ADR-002`**](ADR-002-tl-kafka.md) | `TL.Messaging.Kafka` | Adaptador Kafka, Partition Keys, Idempotência e Dead-Letter Topic. |
+| [**`ADR-001`**](ADR-001-tl-rabbitmq.md) | `TL.Messaging.RabbitMQ` | Adaptador AMQP, Publisher Confirms, Topologia Automática, Publicação em 1 Linha e DLQ. |
+| [**`ADR-002`**](ADR-002-tl-kafka.md) | `TL.Messaging.Kafka` | Adaptador Kafka, `[PartitionKey]`, Idempotência, Publicação em 1 Linha e Dead-Letter Topic. |
 

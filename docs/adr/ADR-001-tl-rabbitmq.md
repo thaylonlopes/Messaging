@@ -6,7 +6,7 @@ O RabbitMQ é amplamente utilizado em arquiteturas orientadas a eventos para men
 
 Sem uma camada padronizada, cada microsserviço implementava sua própria lógica de retentativas, gerando perda silenciosa de mensagens ou filas de trabalho bloqueadas por *poison messages*.
 
-No repositório `TL.Messaging`, o pacote publicado como **`TL.RabbitMQ`** (projeto `TL.Messaging.RabbitMQ`) implementa o adaptador de infraestrutura AMQP conectado diretamente aos contratos fundamentais de [`TL.BaseContracts.Messaging`](https://www.nuget.org/packages/TL.BaseContracts/0.2.0).
+No repositório `TL.Messaging`, o pacote publicado como **`TL.RabbitMQ`** (projeto `TL.Messaging.RabbitMQ`) implementa o adaptador de infraestrutura AMQP conectado diretamente aos contratos fundamentais de [`TL.BaseContracts.Messaging`](https://www.nuget.org/packages/TL.BaseContracts/0.3.1).
 
 ---
 
@@ -30,6 +30,12 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.RabbitMQ`** (proje
 - `services.AddRabbitMqMessaging(config)`
 - `services.AddRabbitMqConsumer<OrderCreatedEvent, OrderCreatedHandler>("app.orders.created", "orders.created")`
 
+### 2.4. Publicação Ergonômica em 1 Linha e Convenções
+- Implementação das sobrecargas `PublishAsync(T message)` e `PublishAsync(string exchange, T message)`.
+- Inferência automática da routing key no padrão kebab-case via `EventMetadataExtractor.GetTopicName<T>()` de `TL.BaseContracts`.
+- Roteamento padrão para a exchange configurada ou inferida por convenção.
+- Compatibilidade total mantida através da especialização `RabbitMqEventProducer`.
+
 ---
 
 ## ⚖️ 3. Consequências e Trade-offs
@@ -38,6 +44,7 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.RabbitMQ`** (proje
 - **Resiliência Pronta para Produção:** Zero esforço para configurar topologias robustas com proteção nativa contra *poison messages*.
 - **Desacoplamento Completo:** Regra de negócio nunca referencia o driver de AMQP nem a biblioteca de terceiros.
 - **Multi-Target Moderno:** Totalmente compilado e testado para `.NET 8.0` e `.NET 9.0`.
+- **Publicação em 1 Linha:** Redução drástica de boilerplate para publicação padrão.
 
 ### ⚠️ Desvantagens / Trade-offs:
 - Exige criação de uma conexão persistente e canais multiplexados por thread no host consumidor.
@@ -45,4 +52,4 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.RabbitMQ`** (proje
 ---
 
 ## 🧪 4. Status de Verificação
-- Coberto por **10 testes unitários automatizados** no `TL.Messaging.RabbitMQ.Tests` (5 em .NET 8 e 5 em .NET 9 - 100% passing).
+- Coberto por **18 execuções de testes unitários automatizados** no `TL.Messaging.RabbitMQ.Tests` (9 em .NET 8 e 9 em .NET 9 - 100% passing).

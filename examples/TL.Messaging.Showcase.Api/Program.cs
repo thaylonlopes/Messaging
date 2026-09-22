@@ -103,6 +103,24 @@ static void MapEndpoints(WebApplication app)
     .WithName("PublishKafkaOrder")
     .WithSummary("Publica evento de pedido no Apache Kafka com chave de partição.");
 
+    group.MapPost("/orders/publish-1-line", async (
+        [FromBody] OrderCreatedEvent order,
+        [FromServices] IEventProducer producer,
+        CancellationToken cancellationToken) =>
+    {
+        await producer.PublishAsync(order, cancellationToken);
+
+        return Results.Ok(new
+        {
+            Message = "Evento publicado em 1 linha com sucesso!",
+            Order = order,
+            InferredTopicOrExchange = "order-created",
+            ResolvedPartitionKey = order.CustomerId
+        });
+    })
+    .WithName("PublishOrderErgonomic")
+    .WithSummary("Publica evento em 1 única linha inferindo tópico e extraindo [PartitionKey] automaticamente.");
+
     group.MapGet("/diagnostics", () =>
     {
         return Results.Ok(new

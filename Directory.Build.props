@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Authors>Thaylon Lopes</Authors>
     <Company>TL Engenharia</Company>
     <Product>TL.Messaging</Product>
@@ -28,7 +28,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageOutputPath>$(MSBuildThisFileDirectory)nupkgs</PackageOutputPath>
+    <PackageOutputPath>C:\src\artifacts\nuget\TL.Messaging</PackageOutputPath>
     <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
 

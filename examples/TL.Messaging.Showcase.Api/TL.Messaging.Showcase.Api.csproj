@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
+    <OpenApiGenerateDocumentsOnBuild>false</OpenApiGenerateDocumentsOnBuild>
   </PropertyGroup>
 
   <ItemGroup>

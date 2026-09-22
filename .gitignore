@@ -1,23 +1,93 @@
-## Visual Studio e .NET
-bin/
-obj/
+﻿# =============================================================================
+# ARQUIVOS E PASTAS OCULTAS LOCAIS (ESTRATEGIA WHITELIST / DENY-BY-DEFAULT)
+# Bloqueia silenciosamente todas as ferramentas locais e arquivos do dev
+# =============================================================================
+.*
+scratchpad.md
+**/scratchpad.md
+
+# Allowlist de Excecoes Publicas do Repositorio:
+!.gitignore
+!.gitattributes
+!.dockerignore
+!.github/
+!.github/**
+!.template.config/
+!.template.config/**
+!.devcontainer/
+!.devcontainer/**
+
+# =============================================================================
+# .NET / C# COMPILATION & BUILD OUTPUTS
+# =============================================================================
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Bb]uild/
+artifacts/
+BenchmarkDotNet.Artifacts/
+Generated\ Files/
+[Ll]og/
+[Ll]ogs/
+*.binlog
+
+# =============================================================================
+# NUGET & PACKAGES
+# =============================================================================
+nupkgs/
+packages/
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+
+# =============================================================================
+# TESTES, COBERTURA & DUMPS
+# =============================================================================
+[Tt]est[Rr]esult*/
+TestResult.xml
+*.trx
+*.coverage
+*.coveragexml
+*.stackdump
+*.dmp
+*.crash
+*.prof
+
+# =============================================================================
+# VISUAL STUDIO / IDES / ARQUIVOS PESSOAIS DO DEV
+# =============================================================================
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
-.vs/
+*.userprefs
+*.dbmdl
+*.opendb
 
-## Build e Testes
-TestResults/
-*.trx
-*.coverage
-*.coveragexml
-nupkgs/
+# =============================================================================
+# SEGREDOS, CERTIFICADOS E AMBIENTE LOCAL
+# =============================================================================
+.env
+.env.*
+!.env.example
+appsettings*.local.json
+appsettings.Development.json
+docker-compose.override.yml
+*.pfx
+*.key
+*.pem
+*.crt
+certs/
 
-## SO e Ferramentas
-.DS_Store
+# =============================================================================
+# SISTEMA OPERACIONAL
+# =============================================================================
 Thumbs.db
-.idea/
-.antigravity/
-.gemini/
-
+ehthumbs.db
+Desktop.ini
+.DS_Store
+.DS_Store?
+._*
