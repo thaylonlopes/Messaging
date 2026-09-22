@@ -8,7 +8,7 @@ namespace TL.Messaging.RabbitMQ.Producer
     /// <summary>
     /// Especialização da interface de produtor para RabbitMQ, expondo capacidades específicas do protocolo AMQP.
     /// </summary>
-    public interface IRabbitMqProducer : IEventProducer
+    public interface IRabbitMqProducer : TL.BaseContracts.Messaging.IEventProducer
     {
         /// <summary>
         /// Publica uma mensagem diretamente em uma Exchange e RoutingKey específicas do RabbitMQ.

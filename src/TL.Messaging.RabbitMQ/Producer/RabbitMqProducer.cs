@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TL.BaseContracts;
 using TL.BaseContracts.Messaging;
+using TL.BaseContracts.Messaging.Helpers;
 using TL.Messaging.RabbitMQ.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,18 +27,17 @@ namespace TL.Messaging.RabbitMQ.Producer
         private readonly RabbitMqOptions _options;
         private readonly IConnectionFactory _connectionFactory;
         private readonly ILogger<RabbitMqProducer>? _logger;
-        private readonly object _lock = new();
-
         private IConnection? _connection;
         private IModel? _channel;
+        private readonly object _lock = new();
         private bool _disposed;
 
         /// <summary>
         /// Inicializa uma nova instância de <see cref="RabbitMqProducer"/>.
         /// </summary>
-        /// <param name="options">Opções de configuração do RabbitMQ.</param>
-        /// <param name="connectionFactory">Fábrica de conexões AMQP opcional (se nula, usa ConnectionFactory padrão).</param>
-        /// <param name="logger">Logger opcional para diagnóstico.</param>
+        /// <param name="options">Opções de configuração de conexão AMQP.</param>
+        /// <param name="connectionFactory">Instância customizada de IConnectionFactory (opcional, para testes unitários ou mock).</param>
+        /// <param name="logger">Logger para diagnósticos de infraestrutura.</param>
         public RabbitMqProducer(
             IOptions<RabbitMqOptions> options,
             IConnectionFactory? connectionFactory = null,
@@ -58,15 +58,43 @@ namespace TL.Messaging.RabbitMQ.Producer
         }
 
         /// <inheritdoc />
+        public Task PublishAsync<T>(T message, CancellationToken cancellationToken = default) where T : class
+        {
+            ArgumentNullException.ThrowIfNull(message);
+
+            string exchange = !string.IsNullOrWhiteSpace(_options.ExchangeName)
+                ? _options.ExchangeName
+                : EventMetadataExtractor.GetTopicName<T>();
+
+            return PublishAsync(exchange, message, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task PublishAsync<T>(string topicOrExchange, T message, CancellationToken cancellationToken = default) where T : class
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(topicOrExchange);
+            ArgumentNullException.ThrowIfNull(message);
+
+            string routingKey = EventMetadataExtractor.GetTopicName<T>();
+
+            var result = await PublishDirectAsync(topicOrExchange, routingKey, message, metadata: null, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure)
+            {
+                throw new InvalidOperationException(
+                    $"Falha ao publicar mensagem no RabbitMQ (Exchange: '{topicOrExchange}', RoutingKey: '{routingKey}'): {result.Error.Message}");
+            }
+        }
+
+        /// <inheritdoc />
         public Task<Result> PublishAsync<T>(
             T message,
-            EventMetadata? metadata = null,
+            EventMetadata? metadata,
             CancellationToken cancellationToken = default) where T : class
         {
-            if (message == null) throw new ArgumentNullException(nameof(message));
+            ArgumentNullException.ThrowIfNull(message);
 
             string exchange = metadata?.Exchange ?? _options.ExchangeName;
-            string routingKey = metadata?.RoutingKey ?? typeof(T).Name.ToLowerInvariant();
+            string routingKey = metadata?.RoutingKey ?? EventMetadataExtractor.GetTopicName<T>();
 
             return PublishDirectAsync(exchange, routingKey, message, metadata, cancellationToken);
         }
@@ -77,7 +105,7 @@ namespace TL.Messaging.RabbitMQ.Producer
             EventMetadata? metadata = null,
             CancellationToken cancellationToken = default) where T : class
         {
-            if (messages == null) throw new ArgumentNullException(nameof(messages));
+            ArgumentNullException.ThrowIfNull(messages);
 
             foreach (var message in messages)
             {
@@ -104,9 +132,17 @@ namespace TL.Messaging.RabbitMQ.Producer
             EventMetadata? metadata = null,
             CancellationToken cancellationToken = default) where T : class
         {
-            if (string.IsNullOrWhiteSpace(exchange)) exchange = _options.ExchangeName;
-            if (string.IsNullOrWhiteSpace(routingKey)) routingKey = typeof(T).Name.ToLowerInvariant();
-            if (message == null) throw new ArgumentNullException(nameof(message));
+            if (string.IsNullOrWhiteSpace(exchange))
+            {
+                exchange = _options.ExchangeName;
+            }
+
+            if (string.IsNullOrWhiteSpace(routingKey))
+            {
+                routingKey = EventMetadataExtractor.GetTopicName<T>();
+            }
+
+            ArgumentNullException.ThrowIfNull(message);
 
             try
             {

@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using TL.BaseContracts;
 using TL.BaseContracts.Messaging;
+using TL.BaseContracts.Messaging.Attributes;
+using TL.BaseContracts.Messaging.Helpers;
 using TL.Messaging.Kafka.Configuration;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
@@ -78,15 +80,45 @@ namespace TL.Messaging.Kafka.Producer
         }
 
         /// <inheritdoc />
+        public Task PublishAsync<T>(T message, CancellationToken cancellationToken = default) where T : class
+        {
+            ArgumentNullException.ThrowIfNull(message);
+
+            string inferredTopic = EventMetadataExtractor.GetTopicName<T>();
+            return PublishAsync(inferredTopic, message, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task PublishAsync<T>(string topicOrExchange, T message, CancellationToken cancellationToken = default) where T : class
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(topicOrExchange);
+            ArgumentNullException.ThrowIfNull(message);
+
+            string? partitionKey = EventMetadataExtractor.ExtractPartitionKey(message);
+
+            var result = await ProduceToTopicAsync(topicOrExchange, partitionKey, message, metadata: null, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure)
+            {
+                throw new InvalidOperationException(
+                    $"Falha ao publicar mensagem no Kafka (Tópico: {topicOrExchange}): {result.Error.Message}");
+            }
+        }
+
+        /// <inheritdoc />
         public Task<Result> PublishAsync<T>(
             T message,
-            EventMetadata? metadata = null,
+            EventMetadata? metadata,
             CancellationToken cancellationToken = default) where T : class
         {
-            if (message == null) throw new ArgumentNullException(nameof(message));
+            ArgumentNullException.ThrowIfNull(message);
 
             string topic = metadata?.Topic ?? _options.DefaultTopic;
-            string partitionKey = metadata?.PartitionKey ?? metadata?.RoutingKey ?? Guid.NewGuid().ToString();
+            if (string.IsNullOrWhiteSpace(topic))
+            {
+                topic = EventMetadataExtractor.GetTopicName<T>();
+            }
+
+            string? partitionKey = metadata?.PartitionKey ?? metadata?.RoutingKey ?? EventMetadataExtractor.ExtractPartitionKey(message);
 
             return ProduceToTopicAsync(topic, partitionKey, message, metadata, cancellationToken);
         }
@@ -97,7 +129,7 @@ namespace TL.Messaging.Kafka.Producer
             EventMetadata? metadata = null,
             CancellationToken cancellationToken = default) where T : class
         {
-            if (messages == null) throw new ArgumentNullException(nameof(messages));
+            ArgumentNullException.ThrowIfNull(messages);
 
             foreach (var message in messages)
             {
@@ -119,14 +151,17 @@ namespace TL.Messaging.Kafka.Producer
         /// <inheritdoc />
         public async Task<Result> ProduceToTopicAsync<T>(
             string topic,
-            string partitionKey,
+            string? partitionKey,
             T message,
             EventMetadata? metadata = null,
             CancellationToken cancellationToken = default) where T : class
         {
-            if (string.IsNullOrWhiteSpace(topic)) topic = _options.DefaultTopic;
-            if (string.IsNullOrWhiteSpace(partitionKey)) partitionKey = Guid.NewGuid().ToString();
-            if (message == null) throw new ArgumentNullException(nameof(message));
+            if (string.IsNullOrWhiteSpace(topic))
+            {
+                topic = _options.DefaultTopic;
+            }
+
+            ArgumentNullException.ThrowIfNull(message);
 
             try
             {
@@ -140,7 +175,7 @@ namespace TL.Messaging.Kafka.Producer
 
                 var kafkaMessage = new Message<string, string>
                 {
-                    Key = partitionKey,
+                    Key = partitionKey!,
                     Value = jsonPayload,
                     Timestamp = new Timestamp(eventEnvelope.Timestamp.UtcDateTime),
                     Headers = new Headers()

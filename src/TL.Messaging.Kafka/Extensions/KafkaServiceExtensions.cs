@@ -30,7 +30,7 @@ namespace TL.Messaging.Kafka.Extensions
             services.Configure<KafkaOptions>(configuration.GetSection(KafkaOptions.SectionName));
 
             services.TryAddSingleton<IKafkaProducer, KafkaProducer>();
-            services.TryAddSingleton<IEventProducer>(sp => sp.GetRequiredService<IKafkaProducer>());
+            services.TryAddSingleton<TL.BaseContracts.Messaging.IEventProducer>(sp => sp.GetRequiredService<IKafkaProducer>());
 
             return services;
         }
@@ -51,7 +51,7 @@ namespace TL.Messaging.Kafka.Extensions
             services.Configure(configure);
 
             services.TryAddSingleton<IKafkaProducer, KafkaProducer>();
-            services.TryAddSingleton<IEventProducer>(sp => sp.GetRequiredService<IKafkaProducer>());
+            services.TryAddSingleton<TL.BaseContracts.Messaging.IEventProducer>(sp => sp.GetRequiredService<IKafkaProducer>());
 
             return services;
         }
