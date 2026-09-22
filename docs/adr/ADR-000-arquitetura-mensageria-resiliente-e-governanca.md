@@ -34,8 +34,8 @@ Todos os projetos da solução suportam compilação multi-target para as versõ
   - `<GenerateDocumentationFile>true</GenerateDocumentationFile>` (com exceção dos projetos de teste e showcase).
 
 ### 2.4. Resiliência por Padrão (Resilience by Default)
-- **RabbitMQ:** Publisher Confirms ativados por padrão (`ConfirmSelect()`), declaração idempotente de topologia (Exchange principal, Fila principal, Dead-Letter Exchange `.dlx` e Dead-Letter Queue `.dlq`), retentativas inteligentes com Polly (backoff exponencial).
-- **Apache Kafka:** Publicação com garantia `Acks.All` e `EnableIdempotence = true`, suporte a partição estrita por chave (`EventMetadata.WithKafkaPartitionKey` ou anotação declarativa `[PartitionKey]`), commit manual de offsets e redirecionamento seguro para Dead-Letter Topic (`.dlt`).
+- **RabbitMQ:** Publisher Confirms ativados por padrão (`ConfirmSelect()`), declaração idempotente de topologia (Exchange principal, Fila principal, Dead-Letter Exchange `.dlx` e Dead-Letter Queue `.dlq`), retentativas com pipeline Polly v8 (`ResiliencePipeline`, backoff exponencial e jitter decorrelacionado).
+- **Apache Kafka:** Publicação com garantia `Acks.All` e `EnableIdempotence = true`, suporte a partição estrita por chave (`EventMetadata.WithKafkaPartitionKey` ou anotação declarativa `[PartitionKey]`), commit manual de offsets, retentativas com pipeline Polly v8 (backoff exponencial e jitter decorrelacionado) e redirecionamento seguro para Dead-Letter Topic (`.dlt`).
 
 ### 2.5. Vitrine Técnica Executável (Showcase API)
 - Projeto executável Minimal API com documentação OpenAPI/Swagger em `examples/TL.Messaging.Showcase.Api`, demonstrando a publicação e consumo integrados para ambos os brokers.

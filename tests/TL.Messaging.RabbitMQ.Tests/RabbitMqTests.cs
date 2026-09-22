@@ -152,5 +152,23 @@ namespace TL.Messaging.RabbitMQ.Tests
                 mockProperties.Object,
                 It.IsAny<ReadOnlyMemory<byte>>()), Times.Exactly(2));
         }
+
+        [Fact]
+        public void Given_RabbitMqConsumer_With_Options_Should_Initialize_Successfully()
+        {
+            var services = new ServiceCollection();
+            services.AddScoped<SampleOrderHandler>();
+            var sp = services.BuildServiceProvider();
+
+            var options = Options.Create(new RabbitMqOptions { RetryCount = 4 });
+            using var consumer = new TL.Messaging.RabbitMQ.Consumer.RabbitMqConsumer<SampleOrderEvent, SampleOrderHandler>(
+                options,
+                sp,
+                Mock.Of<IConnectionFactory>(),
+                queueName: "orders.queue",
+                routingKey: "orders.key");
+
+            consumer.Should().NotBeNull();
+        }
     }
 }

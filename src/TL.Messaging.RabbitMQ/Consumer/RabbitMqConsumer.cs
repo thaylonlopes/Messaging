@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
+using Polly.Retry;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -35,7 +36,7 @@ namespace TL.Messaging.RabbitMQ.Consumer
         private readonly IServiceProvider _serviceProvider;
         private readonly IConnectionFactory _connectionFactory;
         private readonly ILogger<RabbitMqConsumer<TEvent, THandler>>? _logger;
-        private readonly AsyncPolicy _retryPolicy;
+        private readonly ResiliencePipeline _retryPipeline;
         private readonly string _queueName;
         private readonly string _routingKey;
 
@@ -71,9 +72,7 @@ namespace TL.Messaging.RabbitMQ.Consumer
                 DispatchConsumersAsync = true
             };
 
-            _retryPolicy = Policy
-                .Handle<Exception>()
-                .WaitAndRetryAsync(_options.RetryCount, attempt => TimeSpan.FromMilliseconds(200 * Math.Pow(2, attempt - 1)));
+            _retryPipeline = BuildRetryPipeline();
         }
 
         /// <inheritdoc />
@@ -181,9 +180,34 @@ namespace TL.Messaging.RabbitMQ.Consumer
             using var scope = _serviceProvider.CreateScope();
             var handler = scope.ServiceProvider.GetRequiredService<THandler>();
 
-            return await _retryPolicy.ExecuteAsync(async () =>
-                await handler.HandleAsync(eventMessage, stoppingToken).ConfigureAwait(false)
+            return await _retryPipeline.ExecuteAsync(
+                async ct => await handler.HandleAsync(eventMessage, ct).ConfigureAwait(false),
+                stoppingToken
             ).ConfigureAwait(false);
+        }
+
+        private ResiliencePipeline BuildRetryPipeline()
+        {
+            return new ResiliencePipelineBuilder()
+                .AddRetry(new RetryStrategyOptions
+                {
+                    MaxRetryAttempts = _options.RetryCount,
+                    Delay = TimeSpan.FromMilliseconds(200),
+                    BackoffType = DelayBackoffType.Exponential,
+                    UseJitter = true,
+                    ShouldHandle = new PredicateBuilder()
+                        .Handle<Exception>(ex => ex is not OperationCanceledException),
+                    OnRetry = args =>
+                    {
+                        _logger?.LogWarning(
+                            args.Outcome.Exception,
+                            "Tentativa #{AttemptNumber} de processamento da mensagem na fila {QueueName} apos falha transitoria.",
+                            args.AttemptNumber,
+                            _queueName);
+                        return ValueTask.CompletedTask;
+                    }
+                })
+                .Build();
         }
 
         /// <inheritdoc />

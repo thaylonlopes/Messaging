@@ -21,7 +21,7 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto 
 ### 2.2. Consumidor Resiliente (`KafkaConsumer<TEvent, THandler>`)
 - Implementado como `BackgroundService` gerenciado pelo host .NET.
 - **Commit Manual de Offsets (`EnableAutoCommit = false`)**: O offset só é commitado no Kafka após a execução bem-sucedida do `IEventHandler<T>` ou após o desvio seguro para o Dead Letter Topic.
-- **Dead Letter Topic (DLT)**: Quando um evento falha após as retentativas do Polly, ele é publicado no tópico `.dlt` antes de efetuar o commit do offset no tópico principal, impedindo o travamento da partição sem perder dados.
+- **Dead Letter Topic (DLT)**: Quando um evento falha após as retentativas do pipeline Polly v8 com jitter decorrelacionado, ele é publicado no tópico `.dlt` antes de efetuar o commit do offset no tópico principal, impedindo o travamento da partição sem perder dados.
 
 ### 2.3. Configuração Fluente no DI
 - `services.AddKafkaMessaging(config)`
@@ -50,4 +50,4 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto 
 ---
 
 ## 🧪 4. Status de Verificação
-- Coberto por **22 execuções de testes unitários automatizados** no `TL.Messaging.Kafka.Tests` (11 em .NET 8 e 11 em .NET 9 - 100% passing).
+- Coberto por **24 execuções de testes unitários automatizados** no `TL.Messaging.Kafka.Tests` (12 em .NET 8 e 12 em .NET 9 - 100% passing).

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
+using Polly.Retry;
 
 namespace TL.Messaging.Kafka.Consumer
 {
@@ -34,7 +35,7 @@ namespace TL.Messaging.Kafka.Consumer
         private readonly IServiceProvider _serviceProvider;
         private readonly IKafkaProducer? _dltProducer;
         private readonly ILogger<KafkaConsumer<TEvent, THandler>>? _logger;
-        private readonly AsyncPolicy _retryPolicy;
+        private readonly ResiliencePipeline _retryPipeline;
         private readonly string _topic;
         private readonly string _dltTopic;
 
@@ -57,9 +58,7 @@ namespace TL.Messaging.Kafka.Consumer
             _topic = string.IsNullOrWhiteSpace(topic) ? $"events.{eventName}" : topic;
             _dltTopic = $"{_topic}{_options.DeadLetterTopicSuffix}";
 
-            _retryPolicy = Policy
-                .Handle<Exception>()
-                .WaitAndRetryAsync(_options.RetryCount, attempt => TimeSpan.FromMilliseconds(200 * Math.Pow(2, attempt - 1)));
+            _retryPipeline = BuildRetryPipeline();
         }
 
         /// <inheritdoc />
@@ -151,8 +150,9 @@ namespace TL.Messaging.Kafka.Consumer
                 using var scope = _serviceProvider.CreateScope();
                 var handler = scope.ServiceProvider.GetRequiredService<THandler>();
 
-                var result = await _retryPolicy.ExecuteAsync(async () =>
-                    await handler.HandleAsync(eventMessage, stoppingToken).ConfigureAwait(false)
+                var result = await _retryPipeline.ExecuteAsync(
+                    async ct => await handler.HandleAsync(eventMessage, ct).ConfigureAwait(false),
+                    stoppingToken
                 ).ConfigureAwait(false);
 
                 if (result.IsSuccess)
@@ -201,6 +201,30 @@ namespace TL.Messaging.Kafka.Consumer
             {
                 _logger?.LogError(ex, "Falha ao encaminhar mensagem para o Dead Letter Topic {DltTopic}", _dltTopic);
             }
+        }
+
+        private ResiliencePipeline BuildRetryPipeline()
+        {
+            return new ResiliencePipelineBuilder()
+                .AddRetry(new RetryStrategyOptions
+                {
+                    MaxRetryAttempts = _options.RetryCount,
+                    Delay = TimeSpan.FromMilliseconds(200),
+                    BackoffType = DelayBackoffType.Exponential,
+                    UseJitter = true,
+                    ShouldHandle = new PredicateBuilder()
+                        .Handle<Exception>(ex => ex is not OperationCanceledException),
+                    OnRetry = args =>
+                    {
+                        _logger?.LogWarning(
+                            args.Outcome.Exception,
+                            "Tentativa #{AttemptNumber} de processamento da mensagem no topico {Topic} apos falha transitoria.",
+                            args.AttemptNumber,
+                            _topic);
+                        return ValueTask.CompletedTask;
+                    }
+                })
+                .Build();
         }
     }
 }

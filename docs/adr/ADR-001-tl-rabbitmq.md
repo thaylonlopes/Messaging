@@ -23,7 +23,7 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.RabbitMQ`** (proje
   1. Cria a Exchange principal (`amq.topic` ou customizada).
   2. Cria a Dead-Letter Exchange (`.dlx`) e a fila Dead-Letter (`.dlq`).
   3. Cria a fila principal com argumentos `x-dead-letter-exchange` apontando para a `.dlx`.
-- **Retentativas Inteligentes com Polly**: Aplica retentativas com backoff exponencial antes de rejeitar com NACK (`requeue: false`), enviando a mensagem automaticamente para a `.dlq`.
+- **Retentativas Inteligentes com Polly v8**: Aplica retentativas pré-compiladas via `ResiliencePipeline` com backoff exponencial e jitter decorrelacionado antes de rejeitar com NACK (`requeue: false`), enviando a mensagem automaticamente para a `.dlq`.
 - **Delegação Limpa para `IEventHandler<T>`**: Executa o manipulador de negócio dentro de um escopo de injeção de dependência (`IServiceScope`).
 
 ### 2.3. Configuração Fluente no DI
@@ -52,4 +52,4 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.RabbitMQ`** (proje
 ---
 
 ## 🧪 4. Status de Verificação
-- Coberto por **18 execuções de testes unitários automatizados** no `TL.Messaging.RabbitMQ.Tests` (9 em .NET 8 e 9 em .NET 9 - 100% passing).
+- Coberto por **20 execuções de testes unitários automatizados** no `TL.Messaging.RabbitMQ.Tests` (10 em .NET 8 e 10 em .NET 9 - 100% passing).

@@ -144,5 +144,22 @@ namespace TL.Messaging.Kafka.Tests
                 It.IsAny<Message<string, string>>(),
                 It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
+
+        [Fact]
+        public void Given_KafkaConsumer_With_Options_Should_Initialize_Successfully()
+        {
+            var services = new ServiceCollection();
+            services.AddScoped<SamplePaymentHandler>();
+            var sp = services.BuildServiceProvider();
+
+            var options = Options.Create(new KafkaOptions { RetryCount = 4 });
+            using var consumer = new TL.Messaging.Kafka.Consumer.KafkaConsumer<SamplePaymentEvent, SamplePaymentHandler>(
+                options,
+                sp,
+                dltProducer: null,
+                topic: "payments.topic");
+
+            consumer.Should().NotBeNull();
+        }
     }
 }
