@@ -112,14 +112,14 @@ static void MapEndpoints(WebApplication app)
 
         return Results.Ok(new
         {
-            Message = "Evento publicado em 1 linha com sucesso!",
+            Message = "Evento publicado com sucesso!",
             Order = order,
             InferredTopicOrExchange = "order-created",
             ResolvedPartitionKey = order.CustomerId
         });
     })
     .WithName("PublishOrderErgonomic")
-    .WithSummary("Publica evento em 1 única linha inferindo tópico e extraindo [PartitionKey] automaticamente.");
+    .WithSummary("Publica evento inferindo tópico e extraindo [PartitionKey] automaticamente.");
 
     group.MapGet("/diagnostics", () =>
     {

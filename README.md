@@ -24,8 +24,8 @@ Biblioteca corporativa de mensageria assíncrona resiliente para ecossistemas de
 | Projeto / Pacote | Descrição |
 | :--- | :--- |
 | **`TL.BaseContracts`** | Fundação corporativa de contratos em BCL pura (`IEventProducer`, `IEventHandler<T>`, `EventMessage<T>`, `EventMetadata`, anotações `[PartitionKey]`, `[Topic]`, `[MessageId]`, `EventMetadataExtractor` $O(1)$ e `Result`). |
-| **`TL.RabbitMQ`** (`TL.Messaging.RabbitMQ`) | Adaptador AMQP 0-9-1 com topologia automática de Exchange/Queue/DLQ, Publisher Confirms e publicação em 1 linha. |
-| **`TL.Kafka`** (`TL.Messaging.Kafka`) | Adaptador Apache Kafka com controle de partição por chave declarativa, headers de telemetria, commit manual, DLT e publicação em 1 linha. |
+| **`TL.RabbitMQ`** (`TL.Messaging.RabbitMQ`) | Adaptador AMQP 0-9-1 com topologia automática de Exchange/Queue/DLQ, Publisher Confirms e publicação simplificada. |
+| **`TL.Kafka`** (`TL.Messaging.Kafka`) | Adaptador Apache Kafka com controle de partição por chave declarativa, headers de telemetria, commit manual, DLT e publicação simplificada. |
 | **`TL.Messaging.Showcase.Api`** | Vitrine técnica executável (Minimal API com Swagger) para publicação e consumo nos brokers. |
 | **`TL.Messaging.RabbitMQ.Tests`** | Suíte de testes unitários do adaptador RabbitMQ (20 testes em .NET 8 e .NET 9). |
 | **`TL.Messaging.Kafka.Tests`** | Suíte de testes unitários do adaptador Apache Kafka (24 testes em .NET 8 e .NET 9). |

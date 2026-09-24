@@ -61,6 +61,6 @@ Todos os projetos da solução suportam compilação multi-target para as versõ
 | ADR | Projeto | Foco Arquitetural |
 | :--- | :--- | :--- |
 | **`ADR-000`** | `TL.Messaging` (Geral) | Visão Geral, Ports & Adapters com `TL.BaseContracts`, Governança CPM e Resiliência. |
-| [**`ADR-001`**](ADR-001-tl-rabbitmq.md) | `TL.Messaging.RabbitMQ` | Adaptador AMQP, Publisher Confirms, Topologia Automática, Publicação em 1 Linha e DLQ. |
-| [**`ADR-002`**](ADR-002-tl-kafka.md) | `TL.Messaging.Kafka` | Adaptador Kafka, `[PartitionKey]`, Idempotência, Publicação em 1 Linha e Dead-Letter Topic. |
+| [**`ADR-001`**](ADR-001-tl-rabbitmq.md) | `TL.Messaging.RabbitMQ` | Adaptador AMQP, Publisher Confirms, Topologia Automática, Publicação Simplificada e DLQ. |
+| [**`ADR-002`**](ADR-002-tl-kafka.md) | `TL.Messaging.Kafka` | Adaptador Kafka, `[PartitionKey]`, Idempotência, Publicação Simplificada e Dead-Letter Topic. |
 
