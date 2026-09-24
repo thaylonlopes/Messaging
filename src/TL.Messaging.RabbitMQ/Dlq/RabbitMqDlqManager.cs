@@ -17,8 +17,8 @@ namespace TL.Messaging.RabbitMQ.Dlq
         private readonly RabbitMqOptions _options;
         private readonly IConnectionFactory _connectionFactory;
         private readonly ILogger<RabbitMqDlqManager>? _logger;
+        private readonly object _connectionLock = new();
         private IConnection? _connection;
-        private IModel? _channel;
 
         /// <summary>
         /// Inicializa uma nova instância de <see cref="RabbitMqDlqManager"/>.
@@ -58,32 +58,39 @@ namespace TL.Messaging.RabbitMQ.Dlq
                 return Task.FromResult(0);
             }
 
-            EnsureChannelIsOpen();
+            EnsureConnectionIsOpen();
 
             string target = string.IsNullOrWhiteSpace(targetQueue)
                 ? InferTargetQueue(dlqQueueName)
                 : targetQueue;
 
+            if (string.Equals(target, dlqQueueName, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Não foi possível inferir a fila principal a partir de '{dlqQueueName}'. Especifique o parâmetro 'targetQueue' explicitamente para evitar reinjeção na própria DLQ.");
+            }
+
+            using var channel = _connection!.CreateModel();
             int replayedCount = 0;
 
             while (replayedCount < maxMessages && !cancellationToken.IsCancellationRequested)
             {
-                var result = _channel!.BasicGet(dlqQueueName, autoAck: false);
+                var result = channel.BasicGet(dlqQueueName, autoAck: false);
                 if (result == null)
                 {
                     break;
                 }
 
-                var cleanProperties = CreateCleanProperties(_channel, result.BasicProperties);
+                var cleanProperties = CreateCleanProperties(channel, result.BasicProperties);
 
-                _channel.BasicPublish(
+                channel.BasicPublish(
                     exchange: string.Empty,
                     routingKey: target,
                     mandatory: false,
                     basicProperties: cleanProperties,
                     body: result.Body);
 
-                _channel.BasicAck(result.DeliveryTag, multiple: false);
+                channel.BasicAck(result.DeliveryTag, multiple: false);
                 replayedCount++;
             }
 
@@ -93,16 +100,17 @@ namespace TL.Messaging.RabbitMQ.Dlq
             return Task.FromResult(replayedCount);
         }
 
-        private void EnsureChannelIsOpen()
+        private void EnsureConnectionIsOpen()
         {
             if (_connection == null || !_connection.IsOpen)
             {
-                _connection = _connectionFactory.CreateConnection();
-            }
-
-            if (_channel == null || !_channel.IsOpen)
-            {
-                _channel = _connection.CreateModel();
+                lock (_connectionLock)
+                {
+                    if (_connection == null || !_connection.IsOpen)
+                    {
+                        _connection = _connectionFactory.CreateConnection();
+                    }
+                }
             }
         }
 
@@ -147,7 +155,6 @@ namespace TL.Messaging.RabbitMQ.Dlq
         {
             try
             {
-                _channel?.Dispose();
                 _connection?.Dispose();
             }
             catch (Exception ex)

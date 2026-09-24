@@ -202,6 +202,58 @@ namespace TL.Messaging.Kafka.Producer
             }
         }
 
+        /// <inheritdoc />
+        public async Task<Result> ProduceRawAsync(
+            string topic,
+            string? partitionKey,
+            string rawPayload,
+            EventMetadata? metadata = null,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+            ArgumentNullException.ThrowIfNull(rawPayload);
+
+            try
+            {
+                var kafkaMessage = new Message<string, string>
+                {
+                    Key = partitionKey ?? string.Empty,
+                    Value = rawPayload,
+                    Timestamp = Timestamp.Default,
+                    Headers = new Headers()
+                };
+
+                PopulateRawHeaders(kafkaMessage.Headers, metadata);
+
+                var deliveryResult = await _producer!.ProduceAsync(topic, kafkaMessage, cancellationToken).ConfigureAwait(false);
+
+                _logger?.LogDebug("Payload bruto publicado no Kafka (Tópico: {Topic}, Partição: {Partition}, Offset: {Offset})",
+                    topic, deliveryResult.Partition.Value, deliveryResult.Offset.Value);
+
+                return Result.Success();
+            }
+            catch (ProduceException<string, string> pEx)
+            {
+                _logger?.LogError(pEx, "Erro de entrega Kafka de payload bruto no tópico {Topic}: {Reason}", topic, pEx.Error.Reason);
+                return Result.Failure(TL.BaseContracts.Error.Failure("Kafka.DeliveryError", "Falha na entrega da mensagem ao tópico Kafka."));
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Erro inesperado ao produzir payload bruto para o tópico Kafka {Topic}", topic);
+                return Result.Failure(TL.BaseContracts.Error.Failure("Kafka.PublishError", "Erro inesperado na comunicação com o Apache Kafka."));
+            }
+        }
+
+        private static void PopulateRawHeaders(Headers headers, EventMetadata? metadata)
+        {
+            if (metadata?.Headers == null) return;
+
+            foreach (var (k, v) in metadata.Headers)
+            {
+                headers.Add(k, Encoding.UTF8.GetBytes(v ?? string.Empty));
+            }
+        }
+
         private static void PopulateTracingHeaders<T>(Headers headers, EventMessage<T> eventEnvelope, EventMetadata? metadata) where T : class
         {
             headers.Add("correlation-id", Encoding.UTF8.GetBytes(eventEnvelope.CorrelationId));

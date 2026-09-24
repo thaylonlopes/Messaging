@@ -66,6 +66,11 @@ namespace TL.Messaging.Kafka.Configuration
         /// Quantidade de retentativas antes de direcionar para o DLT (padrão: 3).
         /// </summary>
         public int RetryCount { get; set; } = 3;
+
+        /// <summary>
+        /// Prefixo utilizado na composição do identificador de grupo consumidor para operações de replay do DLT (padrão: "dlt-replay").
+        /// </summary>
+        public string ReplayGroupIdPrefix { get; set; } = "dlt-replay";
     }
 }
 

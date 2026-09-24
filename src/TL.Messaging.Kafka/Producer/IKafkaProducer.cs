@@ -26,6 +26,22 @@ namespace TL.Messaging.Kafka.Producer
             T message,
             EventMetadata? metadata = null,
             CancellationToken cancellationToken = default) where T : class;
+
+        /// <summary>
+        /// Publica um payload bruto pré-serializado (como string JSON) diretamente em um tópico específico do Kafka sem reempacotamento.
+        /// </summary>
+        /// <param name="topic">Nome do tópico de destino.</param>
+        /// <param name="partitionKey">Chave para determinação da partição de destino (ou nulo para round-robin).</param>
+        /// <param name="rawPayload">Conteúdo serializado bruto a ser transmitido.</param>
+        /// <param name="metadata">Metadados contextuais adicionais cujos cabeçalhos devem ser propagados.</param>
+        /// <param name="cancellationToken">Token de cancelamento.</param>
+        /// <returns>Resultado da operação com confirmação do broker.</returns>
+        Task<Result> ProduceRawAsync(
+            string topic,
+            string? partitionKey,
+            string rawPayload,
+            EventMetadata? metadata = null,
+            CancellationToken cancellationToken = default);
     }
 }
 

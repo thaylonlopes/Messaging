@@ -208,7 +208,7 @@ namespace TL.Messaging.Kafka.Tests
                 .Returns((ConsumeResult<string, string>)null!);
 
             EventMetadata? capturedMetadata = null;
-            mockProducer.Setup(p => p.ProduceToTopicAsync(
+            mockProducer.Setup(p => p.ProduceRawAsync(
                 "events.samplepaymentevent",
                 "key-1",
                 "{\"PaymentId\":\"PAY-1\"}",
@@ -226,7 +226,7 @@ namespace TL.Messaging.Kafka.Tests
             int replayed = await dlqManager.ReplayAsync("events.samplepaymentevent.dlt", maxMessages: 10);
 
             replayed.Should().Be(1);
-            mockProducer.Verify(p => p.ProduceToTopicAsync(
+            mockProducer.Verify(p => p.ProduceRawAsync(
                 "events.samplepaymentevent",
                 "key-1",
                 "{\"PaymentId\":\"PAY-1\"}",

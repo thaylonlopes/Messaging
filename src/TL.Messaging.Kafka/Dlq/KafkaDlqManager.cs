@@ -58,10 +58,20 @@ namespace TL.Messaging.Kafka.Dlq
                 ? InferTargetTopic(dltTopic)
                 : targetTopic;
 
+            if (string.Equals(target, dltTopic, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Não foi possível inferir o tópico principal a partir de '{dltTopic}'. Especifique o parâmetro 'targetTopic' explicitamente para evitar reinjeção no próprio DLT.");
+            }
+
+            string prefix = string.IsNullOrWhiteSpace(_options.ReplayGroupIdPrefix) ? "dlt-replay" : _options.ReplayGroupIdPrefix;
+            string sanitizedTopic = SanitizeTopicForGroupId(dltTopic);
+            string replayGroupId = $"{_options.GroupId}-{prefix}-{sanitizedTopic}";
+
             var consumerConfig = new ConsumerConfig
             {
                 BootstrapServers = _options.BootstrapServers,
-                GroupId = $"{_options.GroupId}-replay-{Guid.NewGuid():N}",
+                GroupId = replayGroupId,
                 AutoOffsetReset = Confluent.Kafka.AutoOffsetReset.Earliest,
                 EnableAutoCommit = false,
                 EnableAutoOffsetStore = false
@@ -81,7 +91,7 @@ namespace TL.Messaging.Kafka.Dlq
                     ConsumeResult<string, string>? consumeResult;
                     try
                     {
-                        consumeResult = consumer.Consume(TimeSpan.FromSeconds(2));
+                        consumeResult = consumer.Consume(TimeSpan.FromMilliseconds(500));
                     }
                     catch (ConsumeException cEx)
                     {
@@ -105,12 +115,19 @@ namespace TL.Messaging.Kafka.Dlq
                         metadata = metadata.WithKafkaPartitionKey(consumeResult.Message.Key);
                     }
 
-                    await _producer.ProduceToTopicAsync(
+                    var produceResult = await _producer.ProduceRawAsync(
                         target,
                         consumeResult.Message.Key,
                         consumeResult.Message.Value,
                         metadata,
                         cancellationToken).ConfigureAwait(false);
+
+                    if (produceResult.IsFailure)
+                    {
+                        _logger?.LogError("Falha ao reenviar mensagem do DLT {DltTopic} para o tópico {TargetTopic}: {Reason}",
+                            dltTopic, target, produceResult.Error.Message);
+                        break;
+                    }
 
                     consumer.Commit(consumeResult);
                     replayedCount++;
@@ -125,6 +142,11 @@ namespace TL.Messaging.Kafka.Dlq
                 replayedCount, dltTopic, target);
 
             return replayedCount;
+        }
+
+        private static string SanitizeTopicForGroupId(string topic)
+        {
+            return topic.Replace('.', '-');
         }
 
         private string InferTargetTopic(string dltTopic)
