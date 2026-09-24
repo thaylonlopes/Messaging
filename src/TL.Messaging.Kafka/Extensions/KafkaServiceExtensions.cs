@@ -1,6 +1,7 @@
 using System;
 using TL.Messaging.Kafka.Configuration;
 using TL.Messaging.Kafka.Consumer;
+using TL.Messaging.Kafka.Dlq;
 using TL.Messaging.Kafka.Producer;
 using TL.BaseContracts.Messaging;
 using Microsoft.Extensions.Configuration;
@@ -31,6 +32,7 @@ namespace TL.Messaging.Kafka.Extensions
 
             services.TryAddSingleton<IKafkaProducer, KafkaProducer>();
             services.TryAddSingleton<TL.BaseContracts.Messaging.IEventProducer>(sp => sp.GetRequiredService<IKafkaProducer>());
+            services.TryAddSingleton<IKafkaDlqManager, KafkaDlqManager>();
 
             return services;
         }
@@ -52,6 +54,7 @@ namespace TL.Messaging.Kafka.Extensions
 
             services.TryAddSingleton<IKafkaProducer, KafkaProducer>();
             services.TryAddSingleton<TL.BaseContracts.Messaging.IEventProducer>(sp => sp.GetRequiredService<IKafkaProducer>());
+            services.TryAddSingleton<IKafkaDlqManager, KafkaDlqManager>();
 
             return services;
         }

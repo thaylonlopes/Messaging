@@ -2,6 +2,7 @@ using System;
 using TL.BaseContracts.Messaging;
 using TL.Messaging.RabbitMQ.Configuration;
 using TL.Messaging.RabbitMQ.Consumer;
+using TL.Messaging.RabbitMQ.Dlq;
 using TL.Messaging.RabbitMQ.Producer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +32,7 @@ namespace TL.Messaging.RabbitMQ.Extensions
 
             services.TryAddSingleton<IRabbitMqProducer, RabbitMqProducer>();
             services.TryAddSingleton<IEventProducer>(sp => sp.GetRequiredService<IRabbitMqProducer>());
+            services.TryAddSingleton<IRabbitMqDlqManager, RabbitMqDlqManager>();
 
             return services;
         }
@@ -52,6 +54,7 @@ namespace TL.Messaging.RabbitMQ.Extensions
 
             services.TryAddSingleton<IRabbitMqProducer, RabbitMqProducer>();
             services.TryAddSingleton<IEventProducer>(sp => sp.GetRequiredService<IRabbitMqProducer>());
+            services.TryAddSingleton<IRabbitMqDlqManager, RabbitMqDlqManager>();
 
             return services;
         }
