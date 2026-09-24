@@ -251,5 +251,41 @@ namespace TL.Messaging.RabbitMQ.Tests
             count.Should().Be(0);
             mockChannel.Verify(c => c.BasicPublish(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IBasicProperties>(), It.IsAny<ReadOnlyMemory<byte>>()), Times.Never);
         }
+
+        [Fact]
+        public async Task Given_RabbitMqDlqManager_When_TargetQueueCannotBeInferred_Should_Throw_InvalidOperationException()
+        {
+            var mockFactory = new Mock<IConnectionFactory>();
+            var options = Options.Create(new RabbitMqOptions { DeadLetterQueueSuffix = ".dlq" });
+            using var dlqManager = new RabbitMqDlqManager(options, mockFactory.Object);
+
+            var act = () => dlqManager.ReplayAsync("queue-without-suffix");
+
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Não foi possível inferir a fila principal*");
+        }
+
+        [Fact]
+        public async Task Given_RabbitMqDlqManager_ReplayAsync_Should_Create_And_Dispose_Dedicated_Channel_For_Thread_Safety()
+        {
+            var mockFactory = new Mock<IConnectionFactory>();
+            var mockConnection = new Mock<IConnection>();
+            var mockChannel = new Mock<IModel>();
+
+            mockConnection.Setup(c => c.IsOpen).Returns(true);
+            mockConnection.Setup(c => c.CreateModel()).Returns(mockChannel.Object);
+            mockFactory.Setup(f => f.CreateConnection()).Returns(mockConnection.Object);
+
+            mockChannel.Setup(c => c.IsOpen).Returns(true);
+            mockChannel.Setup(c => c.BasicGet("app.orders.dlq", false)).Returns((BasicGetResult)null!);
+
+            var options = Options.Create(new RabbitMqOptions { DeadLetterQueueSuffix = ".dlq" });
+            using var dlqManager = new RabbitMqDlqManager(options, mockFactory.Object);
+
+            await dlqManager.ReplayAsync("app.orders.dlq", maxMessages: 5);
+
+            mockConnection.Verify(c => c.CreateModel(), Times.Once);
+            mockChannel.Verify(c => c.Dispose(), Times.Once);
+        }
     }
 }

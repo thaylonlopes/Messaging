@@ -38,6 +38,8 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto 
 - **Metadados de Diagnóstico em Headers Kafka:** Mensagens com esgotamento de retentativas ou payload corrompido (poison messages) recebem cabeçalhos de diagnóstico padronizados (`x-exception-message`, `x-exception-type`, `x-retry-count`, `x-failed-at-utc`, `x-dlt-original-topic`, `x-dlt-reason`, `traceparent`).
 - **Proteção Anti-Poison Loop:** Interceptação imediata de falhas de desserialização no nível do envelope, publicando o conteúdo bruto no tópico DLT (`.dlt`) e efetuando commit imediato do offset no tópico principal para prevenir loops infinitos e travamento de partições.
 - **Replay Operacional (`IKafkaDlqManager`):** Utilitário de infraestrutura nativo `dlqManager.ReplayAsync("topico.dlt", maxMessages: 50)` que consome o DLT com isolamento, expurga os cabeçalhos de diagnóstico e republica no tópico principal com ordenação de partição preservada.
+- **ProduceRawAsync e Prevenção de Double Envelope:** Adição de `ProduceRawAsync` em `IKafkaProducer`, permitindo a republicação de strings JSON pré-serializadas no replay sem reempacotamento espúrio em envelopes adicionais.
+- **Gerenciamento Determinístico de Offsets no Replay:** Identificador de grupo consumidor determinístico (`{GroupId}-{Prefix}-{SanitizedTopic}`) com auto-reset earliest e commit manual, garantindo idempotência e prevenindo replay storms duplicados.
 - **Deserialização Desacoplada com `EventMessageJsonConverterFactory`:** Suporte transparente do System.Text.Json para o envelope imutável `EventMessage<T>`.
 
 ---
@@ -49,7 +51,7 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto 
 - **Transparência de Troca:** Facilidade de migração entre Kafka e RabbitMQ apenas alterando o registro no `Program.cs`.
 - **Multi-Target Moderno:** Compilado e validado em `.NET 8.0` e `.NET 9.0`.
 - **Ergonomia e Garantia de FIFO:** Elimina erros humanos na passagem de chaves de partição através do atributo declarativo `[PartitionKey]`.
-- **Replay Operacional:** Capacidade operacional nativa de reprocessar DLTs sem scripts manuais.
+- **Replay Operacional:** Capacidade nativa de reprocessar DLTs sem scripts manuais.
 
 ### ⚠️ Desvantagens / Trade-offs:
 - A dependência de drivers nativos compilados em C/C++ (`librdkafka` empacotado no NuGet `Confluent.Kafka`) exige mais recursos de compilação e teste do que drivers AMQP puros.
@@ -57,4 +59,4 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.Kafka`** (projeto 
 ---
 
 ## 🧪 4. Status de Verificação
-- Coberto por **32 execuções de testes unitários automatizados** no `TL.Messaging.Kafka.Tests` (16 em .NET 8 e 16 em .NET 9 - 100% passing).
+- Coberto por **38 execuções de testes unitários automatizados** no `TL.Messaging.Kafka.Tests` (19 em .NET 8 e 19 em .NET 9 - 100% passing).

@@ -265,5 +265,85 @@ namespace TL.Messaging.Kafka.Tests
             count.Should().Be(0);
             mockProducer.Verify(p => p.ProduceToTopicAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<EventMetadata>(), It.IsAny<CancellationToken>()), Times.Never);
         }
+
+        [Fact]
+        public async Task Given_KafkaDlqManager_When_TargetTopicCannotBeInferred_Should_Throw_InvalidOperationException()
+        {
+            var mockProducer = new Mock<IKafkaProducer>();
+            var options = Options.Create(new KafkaOptions { DeadLetterTopicSuffix = ".dlt" });
+            var dlqManager = new KafkaDlqManager(options, mockProducer.Object);
+
+            var act = () => dlqManager.ReplayAsync("topic-without-suffix");
+
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Não foi possível inferir o tópico principal*");
+        }
+
+        [Fact]
+        public async Task Given_KafkaDlqManager_Should_Use_Deterministic_GroupId_For_Committed_Offsets()
+        {
+            var mockProducer = new Mock<IKafkaProducer>();
+            var mockConsumer = new Mock<IConsumer<string, string>>();
+            ConsumerConfig? capturedConfig = null;
+
+            mockConsumer.Setup(c => c.Consume(It.IsAny<TimeSpan>()))
+                .Returns((ConsumeResult<string, string>)null!);
+
+            var options = Options.Create(new KafkaOptions
+            {
+                GroupId = "orders-consumer",
+                ReplayGroupIdPrefix = "dlt-replay",
+                DeadLetterTopicSuffix = ".dlt"
+            });
+
+            var dlqManager = new KafkaDlqManager(
+                options,
+                mockProducer.Object,
+                consumerFactory: cfg =>
+                {
+                    capturedConfig = cfg;
+                    return mockConsumer.Object;
+                });
+
+            await dlqManager.ReplayAsync("events.orders.dlt", maxMessages: 5);
+
+            capturedConfig.Should().NotBeNull();
+            capturedConfig!.GroupId.Should().Be("orders-consumer-dlt-replay-events-orders-dlt");
+            capturedConfig.AutoOffsetReset.Should().Be(Confluent.Kafka.AutoOffsetReset.Earliest);
+            capturedConfig.EnableAutoCommit.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task Given_KafkaProducer_ProduceRawAsync_Should_Send_Payload_Directly_Without_Double_Wrapping()
+        {
+            var mockRawProducer = new Mock<IProducer<string, string>>();
+            Message<string, string>? capturedMessage = null;
+
+            mockRawProducer.Setup(p => p.ProduceAsync(
+                "events.orders",
+                It.IsAny<Message<string, string>>(),
+                It.IsAny<CancellationToken>()))
+                .Callback<string, Message<string, string>, CancellationToken>((t, msg, ct) => capturedMessage = msg)
+                .ReturnsAsync(new DeliveryResult<string, string>
+                {
+                    Topic = "events.orders",
+                    Partition = new Partition(0),
+                    Offset = new Offset(10)
+                });
+
+            var options = Options.Create(new KafkaOptions { DefaultTopic = "events.orders" });
+            using var producer = new KafkaProducer(options, mockRawProducer.Object);
+
+            string originalJson = "{\"EventId\":\"abc-123\",\"Payload\":{\"OrderId\":\"ORD-99\"}}";
+            var metadata = new EventMetadata { Headers = new Dictionary<string, string> { { "x-source", "replay" } } };
+
+            var result = await producer.ProduceRawAsync("events.orders", "key-99", originalJson, metadata);
+
+            result.IsSuccess.Should().BeTrue();
+            capturedMessage.Should().NotBeNull();
+            capturedMessage!.Key.Should().Be("key-99");
+            capturedMessage.Value.Should().Be(originalJson);
+            capturedMessage.Headers.Should().NotBeNull();
+        }
     }
 }

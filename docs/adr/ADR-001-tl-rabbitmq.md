@@ -40,6 +40,8 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.RabbitMQ`** (proje
 - **Metadados de Diagnóstico em Cabeçalhos AMQP:** Mensagens que esgotam retentativas ou falham na validação recebem cabeçalhos de diagnóstico estruturados (`x-exception-message`, `x-exception-type`, `x-retry-count`, `x-failed-at-utc`, `traceparent`).
 - **Proteção Anti-Poison Loop:** Interceptação imediata de payloads JSON malformados no envelope, publicando os bytes brutos na Dead-Letter Queue via `.dlx` e confirmando com `BasicAck` na fila de entrada para prevenir loops de 100% de CPU.
 - **Replay Operacional (`IRabbitMqDlqManager`):** Gestor nativo `dlqManager.ReplayAsync("fila.dlq", maxMessages: 50)` que consome a DLQ, expurga os cabeçalhos de diagnóstico de falha e reinjeta mensagens na fila principal original para reprocessamento limpo.
+- **Isolamento de Canal AMQP por Execução:** Criação de `IModel` dedicado e descartável por operação de replay (`using var channel = ...`), garantindo thread-safety total para o gestor registrado como Singleton.
+- **Guardrail Anti-Loop:** Validação de inferência impedindo que a fila de destino coincida com a própria fila de DLQ de origem.
 - **Deserialização Desacoplada com `EventMessageJsonConverterFactory`:** Suporte transparente do System.Text.Json para o envelope imutável `EventMessage<T>`.
 
 ---
@@ -58,4 +60,4 @@ No repositório `TL.Messaging`, o pacote publicado como **`TL.RabbitMQ`** (proje
 ---
 
 ## 🧪 4. Status de Verificação
-- Coberto por **28 execuções de testes unitários automatizados** no `TL.Messaging.RabbitMQ.Tests` (14 em .NET 8 e 14 em .NET 9 - 100% passing).
+- Coberto por **32 execuções de testes unitários automatizados** no `TL.Messaging.RabbitMQ.Tests` (16 em .NET 8 e 16 em .NET 9 - 100% passing).
