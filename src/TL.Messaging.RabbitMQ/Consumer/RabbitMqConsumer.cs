@@ -31,7 +31,8 @@ namespace TL.Messaging.RabbitMQ.Consumer
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            Converters = { new TL.Messaging.RabbitMQ.Serialization.EventMessageJsonConverterFactory() }
         };
 
         private readonly RabbitMqOptions _options;
@@ -142,7 +143,12 @@ namespace TL.Messaging.RabbitMQ.Consumer
             _channel!.BasicConsume(queue: _queueName, autoAck: false, consumer: consumer);
         }
 
-        private async Task ProcessMessageAsync(BasicDeliverEventArgs ea, CancellationToken stoppingToken)
+        internal void SetChannelForTesting(IModel channel)
+        {
+            _channel = channel;
+        }
+
+        internal async Task ProcessMessageAsync(BasicDeliverEventArgs ea, CancellationToken stoppingToken)
         {
             ulong deliveryTag = ea.DeliveryTag;
 

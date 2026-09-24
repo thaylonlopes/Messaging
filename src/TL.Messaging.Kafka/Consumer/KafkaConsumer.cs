@@ -30,7 +30,8 @@ namespace TL.Messaging.Kafka.Consumer
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            Converters = { new TL.Messaging.Kafka.Serialization.EventMessageJsonConverterFactory() }
         };
 
         private readonly KafkaOptions _options;
@@ -131,7 +132,7 @@ namespace TL.Messaging.Kafka.Consumer
             }
         }
 
-        private async Task ProcessMessageAsync(
+        internal async Task ProcessMessageAsync(
             ConsumeResult<string, string> consumeResult,
             IConsumer<string, string> consumer,
             CancellationToken stoppingToken)
