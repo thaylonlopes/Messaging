@@ -13,6 +13,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
 using Polly.Retry;
+using System.Diagnostics;
+using TL.Messaging.Kafka.Dlq;
 
 namespace TL.Messaging.Kafka.Consumer
 {
@@ -138,11 +140,37 @@ namespace TL.Messaging.Kafka.Consumer
 
             try
             {
-                var eventMessage = JsonSerializer.Deserialize<EventMessage<TEvent>>(rawJson, JsonOptions);
+                EventMessage<TEvent>? eventMessage;
+                try
+                {
+                    eventMessage = JsonSerializer.Deserialize<EventMessage<TEvent>>(rawJson, JsonOptions);
+                }
+                catch (JsonException jEx)
+                {
+                    _logger?.LogWarning(jEx, "Mensagem com formato inválido detectada no tópico {Topic}. Encaminhando para DLT com metadados de diagnóstico.", _topic);
+                    await ForwardToDltAsync(
+                        consumeResult.Message.Key,
+                        rawJson,
+                        consumeResult.Message.Headers,
+                        exceptionMessage: jEx.Message,
+                        exceptionType: jEx.GetType().Name,
+                        retryCount: 0,
+                        stoppingToken).ConfigureAwait(false);
+                    consumer.Commit(consumeResult);
+                    return;
+                }
+
                 if (eventMessage == null || eventMessage.Payload == null)
                 {
-                    _logger?.LogWarning("Mensagem nula ou inválida recebida no tópico {Topic}. Enviando para DLT.", _topic);
-                    await ForwardToDltAsync(consumeResult.Message.Key, rawJson, "Payload inválido ou nulo", stoppingToken).ConfigureAwait(false);
+                    _logger?.LogWarning("Mensagem nula ou invalida recebida no topico {Topic}. Enviando para DLT.", _topic);
+                    await ForwardToDltAsync(
+                        consumeResult.Message.Key,
+                        rawJson,
+                        consumeResult.Message.Headers,
+                        exceptionMessage: "Payload invalido ou nulo",
+                        exceptionType: "InvalidPayloadException",
+                        retryCount: 0,
+                        stoppingToken).ConfigureAwait(false);
                     consumer.Commit(consumeResult);
                     return;
                 }
@@ -164,30 +192,60 @@ namespace TL.Messaging.Kafka.Consumer
                 {
                     _logger?.LogWarning("Handler falhou [{Code}]: {Message}. Encaminhando mensagem para DLT {DltTopic}.",
                         result.Error.Code, result.Error.Message, _dltTopic);
-                    await ForwardToDltAsync(consumeResult.Message.Key, rawJson, $"{result.Error.Code}: {result.Error.Message}", stoppingToken).ConfigureAwait(false);
-                    consumer.Commit(consumeResult); // Commit no tópico principal após encaminhar para DLT
+                    await ForwardToDltAsync(
+                        consumeResult.Message.Key,
+                        rawJson,
+                        consumeResult.Message.Headers,
+                        exceptionMessage: $"{result.Error.Code}: {result.Error.Message}",
+                        exceptionType: "ResultFailure",
+                        retryCount: _options.RetryCount,
+                        stoppingToken).ConfigureAwait(false);
+                    consumer.Commit(consumeResult);
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Exceção não tratada ao processar mensagem no tópico {Topic}. Encaminhando para DLT.", _topic);
-                await ForwardToDltAsync(consumeResult.Message.Key, rawJson, ex.Message, stoppingToken).ConfigureAwait(false);
+                _logger?.LogError(ex, "Excecao nao tratada ao processar mensagem no topico {Topic}. Encaminhando para DLT.", _topic);
+                await ForwardToDltAsync(
+                    consumeResult.Message.Key,
+                    rawJson,
+                    consumeResult.Message.Headers,
+                    exceptionMessage: ex.Message,
+                    exceptionType: ex.GetType().Name,
+                    retryCount: _options.RetryCount,
+                    stoppingToken).ConfigureAwait(false);
                 consumer.Commit(consumeResult);
             }
         }
 
-        private async Task ForwardToDltAsync(string key, string rawJson, string reason, CancellationToken stoppingToken)
+        private async Task ForwardToDltAsync(
+            string key,
+            string rawJson,
+            Headers? incomingHeaders,
+            string exceptionMessage,
+            string exceptionType,
+            int retryCount,
+            CancellationToken stoppingToken)
         {
-            if (_dltProducer == null) return;
+            if (_dltProducer == null)
+            {
+                return;
+            }
 
             try
             {
-                var headers = new Dictionary<string, string>
+                var headers = CloneHeadersOrInitialize(incomingHeaders);
+                headers[MessagingDiagnosticHeaders.ExceptionMessage] = exceptionMessage;
+                headers[MessagingDiagnosticHeaders.ExceptionType] = exceptionType;
+                headers[MessagingDiagnosticHeaders.RetryCount] = retryCount.ToString();
+                headers[MessagingDiagnosticHeaders.FailedAtUtc] = DateTimeOffset.UtcNow.ToString("O");
+                headers[MessagingDiagnosticHeaders.OriginalTopic] = _topic;
+                headers[MessagingDiagnosticHeaders.Reason] = exceptionMessage;
+
+                if (!headers.ContainsKey(MessagingDiagnosticHeaders.TraceParent))
                 {
-                    ["x-dlt-original-topic"] = _topic,
-                    ["x-dlt-reason"] = reason,
-                    ["x-dlt-timestamp-utc"] = DateTimeOffset.UtcNow.ToString("O")
-                };
+                    headers[MessagingDiagnosticHeaders.TraceParent] = ResolveTraceParent(headers, key);
+                }
 
                 var metadata = new EventMetadata
                 {
@@ -201,6 +259,45 @@ namespace TL.Messaging.Kafka.Consumer
             {
                 _logger?.LogError(ex, "Falha ao encaminhar mensagem para o Dead Letter Topic {DltTopic}", _dltTopic);
             }
+        }
+
+        private static Dictionary<string, string> CloneHeadersOrInitialize(Headers? incomingHeaders)
+        {
+            var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (incomingHeaders == null)
+            {
+                return headers;
+            }
+
+            foreach (var header in incomingHeaders)
+            {
+                if (header.GetValueBytes() != null)
+                {
+                    headers[header.Key] = Encoding.UTF8.GetString(header.GetValueBytes());
+                }
+            }
+
+            return headers;
+        }
+
+        private static string ResolveTraceParent(Dictionary<string, string> headers, string? fallbackKey)
+        {
+            if (Activity.Current?.Id != null)
+            {
+                return Activity.Current.Id;
+            }
+
+            if (headers.TryGetValue(MessagingDiagnosticHeaders.TraceParent, out var existingTrace) && !string.IsNullOrWhiteSpace(existingTrace))
+            {
+                return existingTrace;
+            }
+
+            if (!string.IsNullOrWhiteSpace(fallbackKey))
+            {
+                return fallbackKey;
+            }
+
+            return Guid.NewGuid().ToString();
         }
 
         private ResiliencePipeline BuildRetryPipeline()

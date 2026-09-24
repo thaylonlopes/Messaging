@@ -14,6 +14,8 @@ using Polly;
 using Polly.Retry;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using System.Diagnostics;
+using TL.Messaging.RabbitMQ.Dlq;
 
 namespace TL.Messaging.RabbitMQ.Consumer
 {
@@ -146,11 +148,34 @@ namespace TL.Messaging.RabbitMQ.Consumer
 
             try
             {
-                var eventMessage = JsonSerializer.Deserialize<EventMessage<TEvent>>(ea.Body.Span, JsonOptions);
+                EventMessage<TEvent>? eventMessage;
+                try
+                {
+                    eventMessage = JsonSerializer.Deserialize<EventMessage<TEvent>>(ea.Body.Span, JsonOptions);
+                }
+                catch (JsonException jEx)
+                {
+                    _logger?.LogWarning(jEx, "Mensagem com formato inválido detectada na fila {Queue}. Encaminhando para DLQ com metadados de diagnóstico.", _queueName);
+                    ForwardToDeadLetterQueue(
+                        body: ea.Body,
+                        originalProps: ea.BasicProperties,
+                        exceptionMessage: jEx.Message,
+                        exceptionType: jEx.GetType().Name,
+                        retryCount: 0);
+                    _channel?.BasicAck(deliveryTag, multiple: false);
+                    return;
+                }
+
                 if (eventMessage == null || eventMessage.Payload == null)
                 {
-                    _logger?.LogWarning("Mensagem inválida ou nula recebida na fila {Queue}. Encaminhando para DLQ.", _queueName);
-                    _channel?.BasicNack(deliveryTag, multiple: false, requeue: false);
+                    _logger?.LogWarning("Mensagem invalida ou nula recebida na fila {Queue}. Encaminhando para DLQ.", _queueName);
+                    ForwardToDeadLetterQueue(
+                        body: ea.Body,
+                        originalProps: ea.BasicProperties,
+                        exceptionMessage: "Payload invalido ou nulo",
+                        exceptionType: "InvalidPayloadException",
+                        retryCount: 0);
+                    _channel?.BasicAck(deliveryTag, multiple: false);
                     return;
                 }
 
@@ -165,14 +190,94 @@ namespace TL.Messaging.RabbitMQ.Consumer
                 {
                     _logger?.LogWarning("Handler retornou falha [{Code}]: {Message}. Encaminhando para DLQ.",
                         result.Error.Code, result.Error.Message);
-                    _channel?.BasicNack(deliveryTag, multiple: false, requeue: false);
+                    ForwardToDeadLetterQueue(
+                        body: ea.Body,
+                        originalProps: ea.BasicProperties,
+                        exceptionMessage: $"{result.Error.Code}: {result.Error.Message}",
+                        exceptionType: "ResultFailure",
+                        retryCount: _options.RetryCount);
+                    _channel?.BasicAck(deliveryTag, multiple: false);
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Exceção não tratada ao processar mensagem na fila {Queue}. Encaminhando para DLQ.", _queueName);
-                _channel?.BasicNack(deliveryTag, multiple: false, requeue: false);
+                _logger?.LogError(ex, "Excecao nao tratada ao processar mensagem na fila {Queue}. Encaminhando para DLQ.", _queueName);
+                ForwardToDeadLetterQueue(
+                    body: ea.Body,
+                    originalProps: ea.BasicProperties,
+                    exceptionMessage: ex.Message,
+                    exceptionType: ex.GetType().Name,
+                    retryCount: _options.RetryCount);
+                _channel?.BasicAck(deliveryTag, multiple: false);
             }
+        }
+
+        private void ForwardToDeadLetterQueue(
+            ReadOnlyMemory<byte> body,
+            IBasicProperties? originalProps,
+            string exceptionMessage,
+            string exceptionType,
+            int retryCount)
+        {
+            if (_channel == null || !_channel.IsOpen)
+            {
+                return;
+            }
+
+            string dlxExchange = $"{_options.ExchangeName}{_options.DeadLetterExchangeSuffix}";
+            var dlqProps = _channel.CreateBasicProperties();
+
+            dlqProps.Persistent = true;
+            dlqProps.ContentType = originalProps?.ContentType ?? "application/json";
+            dlqProps.CorrelationId = originalProps?.CorrelationId ?? Guid.NewGuid().ToString();
+
+            var headers = CloneHeadersOrInitialize(originalProps?.Headers);
+            headers[MessagingDiagnosticHeaders.ExceptionMessage] = exceptionMessage;
+            headers[MessagingDiagnosticHeaders.ExceptionType] = exceptionType;
+            headers[MessagingDiagnosticHeaders.RetryCount] = retryCount.ToString();
+            headers[MessagingDiagnosticHeaders.FailedAtUtc] = DateTimeOffset.UtcNow.ToString("O");
+
+            if (!headers.ContainsKey(MessagingDiagnosticHeaders.TraceParent))
+            {
+                headers[MessagingDiagnosticHeaders.TraceParent] = ResolveTraceParent(originalProps);
+            }
+
+            dlqProps.Headers = headers;
+
+            _channel.BasicPublish(
+                exchange: dlxExchange,
+                routingKey: _routingKey,
+                mandatory: false,
+                basicProperties: dlqProps,
+                body: body);
+        }
+
+        private static IDictionary<string, object> CloneHeadersOrInitialize(IDictionary<string, object>? sourceHeaders)
+        {
+            var headers = new Dictionary<string, object>();
+            if (sourceHeaders != null)
+            {
+                foreach (var entry in sourceHeaders)
+                {
+                    headers[entry.Key] = entry.Value;
+                }
+            }
+            return headers;
+        }
+
+        private static string ResolveTraceParent(IBasicProperties? originalProps)
+        {
+            if (Activity.Current?.Id != null)
+            {
+                return Activity.Current.Id;
+            }
+
+            if (!string.IsNullOrWhiteSpace(originalProps?.CorrelationId))
+            {
+                return originalProps.CorrelationId;
+            }
+
+            return Guid.NewGuid().ToString();
         }
 
         private async Task<Result> ExecuteHandlerWithRetryAsync(EventMessage<TEvent> eventMessage, CancellationToken stoppingToken)
