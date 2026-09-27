@@ -79,7 +79,13 @@ namespace TL.Messaging.Kafka.Producer
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Publica um evento no Apache Kafka utilizando convenção declarativa de nome de tópico e extração automática de [PartitionKey].
+        /// </summary>
+        /// <typeparam name="T">Tipo do evento a ser publicado.</typeparam>
+        /// <param name="message">Instância do evento.</param>
+        /// <param name="cancellationToken">Token de cancelamento.</param>
+        /// <returns>Task representando a conclusão da publicação com confirmação do cluster.</returns>
         public Task PublishAsync<T>(T message, CancellationToken cancellationToken = default) where T : class
         {
             ArgumentNullException.ThrowIfNull(message);
@@ -88,7 +94,15 @@ namespace TL.Messaging.Kafka.Producer
             return PublishAsync(inferredTopic, message, cancellationToken);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Publica um evento em um tópico específico do Kafka com extração automática de [PartitionKey].
+        /// </summary>
+        /// <typeparam name="T">Tipo do evento a ser publicado.</typeparam>
+        /// <param name="topicOrExchange">Nome do tópico Kafka de destino.</param>
+        /// <param name="message">Instância do evento.</param>
+        /// <param name="cancellationToken">Token de cancelamento.</param>
+        /// <returns>Task representando a conclusão da publicação.</returns>
+        /// <exception cref="InvalidOperationException">Lançada caso ocorra erro na entrega ao broker Kafka.</exception>
         public async Task PublishAsync<T>(string topicOrExchange, T message, CancellationToken cancellationToken = default) where T : class
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(topicOrExchange);
@@ -104,7 +118,14 @@ namespace TL.Messaging.Kafka.Producer
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Publica um evento acompanhado de metadados contextuais (CorrelationId, Partição, Headers de rastreabilidade) retornando <see cref="Result"/>.
+        /// </summary>
+        /// <typeparam name="T">Tipo do evento a ser publicado.</typeparam>
+        /// <param name="message">Instância do evento.</param>
+        /// <param name="metadata">Metadados contextuais adicionais contendo chave de partição ou cabeçalhos OpenTelemetry.</param>
+        /// <param name="cancellationToken">Token de cancelamento.</param>
+        /// <returns>Objeto <see cref="Result"/> indicando sucesso ou detalhe de falha de entrega.</returns>
         public Task<Result> PublishAsync<T>(
             T message,
             EventMetadata? metadata,
@@ -123,7 +144,14 @@ namespace TL.Messaging.Kafka.Producer
             return ProduceToTopicAsync(topic, partitionKey, message, metadata, cancellationToken);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Publica um lote de eventos sequencialmente no Apache Kafka com verificação de confirmações individuais.
+        /// </summary>
+        /// <typeparam name="T">Tipo dos eventos contidos no lote.</typeparam>
+        /// <param name="messages">Coleção de eventos a transmitir.</param>
+        /// <param name="metadata">Metadados compartilhados a serem aplicados nas mensagens do lote.</param>
+        /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+        /// <returns>Resultado da operação em lote indicando sucesso ou a primeira falha encontrada.</returns>
         public async Task<Result> PublishBatchAsync<T>(
             IEnumerable<T> messages,
             EventMetadata? metadata = null,
@@ -148,7 +176,16 @@ namespace TL.Messaging.Kafka.Producer
             return Result.Success();
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Publica uma mensagem em um tópico específico do Kafka com chave de partição informada e injeção de headers de telemetria.
+        /// </summary>
+        /// <typeparam name="T">O tipo da mensagem de evento.</typeparam>
+        /// <param name="topic">Nome do tópico de destino.</param>
+        /// <param name="partitionKey">Chave para determinação da partição de destino (ou nulo para round-robin).</param>
+        /// <param name="message">Instância do evento.</param>
+        /// <param name="metadata">Metadados contextuais adicionais.</param>
+        /// <param name="cancellationToken">Token de cancelamento.</param>
+        /// <returns>Resultado da operação com confirmação de entrega do broker.</returns>
         public async Task<Result> ProduceToTopicAsync<T>(
             string topic,
             string? partitionKey,
@@ -202,7 +239,15 @@ namespace TL.Messaging.Kafka.Producer
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Publica um payload bruto pré-serializado (ex: string JSON de DLQ/DLT) diretamente em um tópico específico do Kafka sem reempacotamento.
+        /// </summary>
+        /// <param name="topic">Nome do tópico Kafka de destino.</param>
+        /// <param name="partitionKey">Chave para determinação da partição de destino (ou nulo para round-robin).</param>
+        /// <param name="rawPayload">Conteúdo serializado bruto a ser transmitido.</param>
+        /// <param name="metadata">Metadados contextuais adicionais cujos cabeçalhos devem ser propagados.</param>
+        /// <param name="cancellationToken">Token de cancelamento.</param>
+        /// <returns>Resultado da operação indicando sucesso ou detalhe de falha.</returns>
         public async Task<Result> ProduceRawAsync(
             string topic,
             string? partitionKey,
@@ -268,7 +313,9 @@ namespace TL.Messaging.Kafka.Producer
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Realiza o flush das mensagens pendentes e libera os recursos não gerenciados do produtor Kafka.
+        /// </summary>
         public void Dispose()
         {
             if (_disposed) return;

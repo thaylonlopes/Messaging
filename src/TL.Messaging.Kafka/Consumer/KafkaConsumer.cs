@@ -43,8 +43,13 @@ namespace TL.Messaging.Kafka.Consumer
         private readonly string _dltTopic;
 
         /// <summary>
-        /// Inicializa uma nova instância do consumidor Kafka.
+        /// Inicializa uma nova instância do consumidor Kafka com commit manual de offsets e suporte a Dead Letter Topic (DLT).
         /// </summary>
+        /// <param name="options">Opções de configuração de conexão do cluster Apache Kafka.</param>
+        /// <param name="serviceProvider">Provedor de serviços para resolução de escopos de injeção de dependência e handlers.</param>
+        /// <param name="dltProducer">Produtor Kafka opcional utilizado para encaminhar mensagens não recuperáveis ao DLT.</param>
+        /// <param name="logger">Logger opcional para diagnósticos de consumo e telemetria.</param>
+        /// <param name="topic">Nome customizado do tópico de consumo (opcional; se nulo, infere convenção pelo nome do evento).</param>
         public KafkaConsumer(
             IOptions<KafkaOptions> options,
             IServiceProvider serviceProvider,

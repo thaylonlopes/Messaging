@@ -47,8 +47,14 @@ namespace TL.Messaging.RabbitMQ.Consumer
         private IModel? _channel;
 
         /// <summary>
-        /// Inicializa uma nova instância do consumidor RabbitMQ.
+        /// Inicializa uma nova instância do consumidor RabbitMQ com suporte a DLQ e retentativas Polly.
         /// </summary>
+        /// <param name="options">Opções de configuração de conexão e topologia do RabbitMQ.</param>
+        /// <param name="serviceProvider">Provedor de serviços para criação de escopo de DI e resolução de handlers de eventos.</param>
+        /// <param name="connectionFactory">Fábrica customizada de conexões AMQP (opcional, para testes ou mocks).</param>
+        /// <param name="logger">Instância de logger para diagnósticos operacionais de consumo.</param>
+        /// <param name="queueName">Nome customizado da fila principal (opcional; padrão infere pelo nome do evento).</param>
+        /// <param name="routingKey">Chave de roteamento customizada (opcional; padrão infere pelo nome do evento).</param>
         public RabbitMqConsumer(
             IOptions<RabbitMqOptions> options,
             IServiceProvider serviceProvider,

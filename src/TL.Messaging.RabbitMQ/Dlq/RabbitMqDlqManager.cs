@@ -23,6 +23,9 @@ namespace TL.Messaging.RabbitMQ.Dlq
         /// <summary>
         /// Inicializa uma nova instância de <see cref="RabbitMqDlqManager"/>.
         /// </summary>
+        /// <param name="options">Opções de configuração de conexão do RabbitMQ.</param>
+        /// <param name="connectionFactory">Fábrica de conexões AMQP customizada opcional (para testes ou mocks).</param>
+        /// <param name="logger">Logger opcional para diagnósticos de operações de replay na DLQ.</param>
         public RabbitMqDlqManager(
             IOptions<RabbitMqOptions> options,
             IConnectionFactory? connectionFactory = null,
@@ -41,7 +44,14 @@ namespace TL.Messaging.RabbitMQ.Dlq
             };
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Reprocessa mensagens acumuladas na Dead-Letter Queue (DLQ), expurgando cabeçalhos de diagnóstico de falha e reinjetando na fila principal.
+        /// </summary>
+        /// <param name="dlqQueueName">Nome da fila DLQ de origem (ex: "app.orders.dlq").</param>
+        /// <param name="targetQueue">Nome da fila ou routing key de destino (opcional; se nulo, infere removendo o sufixo .dlq).</param>
+        /// <param name="maxMessages">Quantidade máxima de mensagens a reprocessar nesta execução (padrão: 100).</param>
+        /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+        /// <returns>Quantidade de mensagens recuperadas e reenviadas com sucesso.</returns>
         public Task<int> ReplayAsync(
             string dlqQueueName,
             string? targetQueue = null,

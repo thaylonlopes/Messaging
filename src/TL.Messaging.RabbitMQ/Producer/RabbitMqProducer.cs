@@ -57,7 +57,13 @@ namespace TL.Messaging.RabbitMQ.Producer
             };
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Publica um evento no RabbitMQ utilizando a exchange configurada ou inferida por convenção.
+        /// </summary>
+        /// <typeparam name="T">Tipo do evento de integração a ser publicado.</typeparam>
+        /// <param name="message">Instância do evento.</param>
+        /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+        /// <returns>Task representando a conclusão da operação de publicação.</returns>
         public Task PublishAsync<T>(T message, CancellationToken cancellationToken = default) where T : class
         {
             ArgumentNullException.ThrowIfNull(message);
@@ -69,7 +75,15 @@ namespace TL.Messaging.RabbitMQ.Producer
             return PublishAsync(exchange, message, cancellationToken);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Publica um evento em uma exchange/tópico específico do RabbitMQ.
+        /// </summary>
+        /// <typeparam name="T">Tipo do evento de integração a ser publicado.</typeparam>
+        /// <param name="topicOrExchange">Nome da exchange de destino no RabbitMQ.</param>
+        /// <param name="message">Instância do evento.</param>
+        /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+        /// <returns>Task representando a conclusão da publicação com confirmação do broker.</returns>
+        /// <exception cref="InvalidOperationException">Lançada caso o broker não confirme a entrega (NACK).</exception>
         public async Task PublishAsync<T>(string topicOrExchange, T message, CancellationToken cancellationToken = default) where T : class
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(topicOrExchange);
@@ -85,7 +99,14 @@ namespace TL.Messaging.RabbitMQ.Producer
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Publica um evento acompanhado de metadados contextuais (CorrelationId, Headers) retornando <see cref="Result"/>.
+        /// </summary>
+        /// <typeparam name="T">Tipo do evento a ser publicado.</typeparam>
+        /// <param name="message">Instância do evento.</param>
+        /// <param name="metadata">Metadados adicionais, incluindo CorrelationId e cabeçalhos customizados.</param>
+        /// <param name="cancellationToken">Token de cancelamento.</param>
+        /// <returns>Objeto <see cref="Result"/> indicando sucesso ou detalhe de falha.</returns>
         public Task<Result> PublishAsync<T>(
             T message,
             EventMetadata? metadata,
@@ -99,7 +120,14 @@ namespace TL.Messaging.RabbitMQ.Producer
             return PublishDirectAsync(exchange, routingKey, message, metadata, cancellationToken);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Publica um lote de eventos sequencialmente no RabbitMQ com verificação de confirmações.
+        /// </summary>
+        /// <typeparam name="T">Tipo dos eventos contidos no lote.</typeparam>
+        /// <param name="messages">Coleção de eventos a transmitir.</param>
+        /// <param name="metadata">Metadados compartilhados a serem aplicados nas mensagens do lote.</param>
+        /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+        /// <returns>Resultado da operação em lote indicando sucesso ou a primeira falha encontrada.</returns>
         public async Task<Result> PublishBatchAsync<T>(
             IEnumerable<T> messages,
             EventMetadata? metadata = null,
@@ -124,7 +152,16 @@ namespace TL.Messaging.RabbitMQ.Producer
             return Result.Success();
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Publica uma mensagem diretamente em uma Exchange e RoutingKey específicas do RabbitMQ com Publisher Confirms ativado.
+        /// </summary>
+        /// <typeparam name="T">O tipo da mensagem de evento.</typeparam>
+        /// <param name="exchange">Nome da Exchange de destino.</param>
+        /// <param name="routingKey">Chave de roteamento AMQP.</param>
+        /// <param name="message">Instância do evento.</param>
+        /// <param name="metadata">Metadados contextuais opcionais.</param>
+        /// <param name="cancellationToken">Token de cancelamento.</param>
+        /// <returns>Resultado da operação indicando sucesso ou detalhe de falha de publicação/NACK.</returns>
         public Task<Result> PublishDirectAsync<T>(
             string exchange,
             string routingKey,
@@ -224,7 +261,9 @@ namespace TL.Messaging.RabbitMQ.Producer
             channel.ConfirmSelect();
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Libera os recursos não gerenciados de conexão e canais AMQP do RabbitMQ.
+        /// </summary>
         public void Dispose()
         {
             if (_disposed) return;

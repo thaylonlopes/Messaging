@@ -11,7 +11,11 @@ namespace TL.Messaging.Kafka.Serialization
     /// </summary>
     public class EventMessageJsonConverterFactory : JsonConverterFactory
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// Determina se o tipo especificado pode ser convertido por esta factory (tipos genéricos fechados de <see cref="EventMessage{T}"/>).
+        /// </summary>
+        /// <param name="typeToConvert">Tipo a ser verificado para conversão.</param>
+        /// <returns>True se o tipo for compatível com <see cref="EventMessage{T}"/>, caso contrário false.</returns>
         public override bool CanConvert(Type typeToConvert)
         {
             if (!typeToConvert.IsGenericType)
@@ -22,7 +26,12 @@ namespace TL.Messaging.Kafka.Serialization
             return typeToConvert.GetGenericTypeDefinition() == typeof(EventMessage<>);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Cria uma instância especializada de <see cref="JsonConverter"/> para o tipo de envelope solicitado.
+        /// </summary>
+        /// <param name="typeToConvert">Tipo do envelope de evento a ser convertido.</param>
+        /// <param name="options">Opções de serialização JSON configuradas.</param>
+        /// <returns>Instância do conversor JSON especializado.</returns>
         public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
         {
             Type payloadType = typeToConvert.GetGenericArguments()[0];

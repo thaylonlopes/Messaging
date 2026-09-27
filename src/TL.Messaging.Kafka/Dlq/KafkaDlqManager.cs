@@ -25,6 +25,10 @@ namespace TL.Messaging.Kafka.Dlq
         /// <summary>
         /// Inicializa uma nova instância de <see cref="KafkaDlqManager"/>.
         /// </summary>
+        /// <param name="options">Opções de configuração de conexão do cluster Apache Kafka.</param>
+        /// <param name="producer">Instância do produtor Kafka utilizada para republicação no tópico original.</param>
+        /// <param name="logger">Logger opcional para diagnósticos de operações de replay no DLT.</param>
+        /// <param name="consumerFactory">Fábrica customizada de consumidores para injeção e isolamento em testes unitários.</param>
         public KafkaDlqManager(
             IOptions<KafkaOptions> options,
             IKafkaProducer producer,
@@ -37,7 +41,14 @@ namespace TL.Messaging.Kafka.Dlq
             _consumerFactory = consumerFactory;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Reprocessa mensagens acumuladas no Dead-Letter Topic (DLT), expurgando cabeçalhos de diagnóstico de falha e republicando no tópico principal.
+        /// </summary>
+        /// <param name="dltTopic">Nome do tópico DLT de origem (ex: "events.orders.dlt").</param>
+        /// <param name="targetTopic">Nome do tópico de destino (opcional; se nulo, infere removendo o sufixo .dlt).</param>
+        /// <param name="maxMessages">Quantidade máxima de mensagens a reprocessar nesta execução (padrão: 100).</param>
+        /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+        /// <returns>Quantidade de mensagens recuperadas e reenviadas com sucesso.</returns>
         public async Task<int> ReplayAsync(
             string dltTopic,
             string? targetTopic = null,
