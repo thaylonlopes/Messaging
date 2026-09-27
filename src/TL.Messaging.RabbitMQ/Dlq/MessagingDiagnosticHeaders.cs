@@ -29,7 +29,7 @@ namespace TL.Messaging.RabbitMQ.Dlq
         public const string FailedAtUtc = "x-failed-at-utc";
 
         /// <summary>
-        /// Contexto de rastreabilidade distribuída padrão W3C traceparent.
+        /// Contexto de rastreabilidade distribuída OpenTelemetry (traceparent).
         /// </summary>
         public const string TraceParent = "traceparent";
 

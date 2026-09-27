@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Authors>Thaylon Lopes</Authors>
     <Company>TL Engenharia</Company>
     <Product>TL.Messaging</Product>

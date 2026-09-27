@@ -11,7 +11,7 @@ namespace TL.Messaging.Benchmarks.Suites;
 
 /// <summary>
 /// Benchmark de Nível 2: Medição de throughput e alocação para extração de [PartitionKey],
-/// resolução de tópicos e propagação de cabeçalhos W3C OpenTelemetry (Distributed Tracing).
+/// resolução de tópicos e propagação de cabeçalhos de Tracing Distribuído (OpenTelemetry).
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
@@ -48,7 +48,7 @@ public class Level2OrderPlacedEventBenchmarks
 
         _metadataWithTracing = new EventMetadata
         {
-            CorrelationId = "corr-w3c-tracing-bench",
+            CorrelationId = "corr-otel-tracing-bench",
             Headers = tracingHeaders
         };
 
@@ -71,12 +71,12 @@ public class Level2OrderPlacedEventBenchmarks
         return EventMetadataExtractor.GetTopicName<OrderPlacedEvent>();
     }
 
-    [Benchmark(Description = "3. Composição de Metadados com Headers W3C OpenTelemetry")]
-    public EventMetadata ComposeW3CHeaders()
+    [Benchmark(Description = "3. Composição de Metadados com Headers OpenTelemetry")]
+    public EventMetadata ComposeOpenTelemetryHeaders()
     {
         return new EventMetadata
         {
-            CorrelationId = "corr-w3c-tracing-bench",
+            CorrelationId = "corr-otel-tracing-bench",
             Headers = new Dictionary<string, string>
             {
                 ["traceparent"] = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
@@ -86,8 +86,8 @@ public class Level2OrderPlacedEventBenchmarks
         };
     }
 
-    [Benchmark(Description = "4. Ciclo Completo: Envelope + PartitionKey + W3C Headers + Serialize")]
-    public (string? PartitionKey, byte[] Body) FullLifecycleWithW3CTracing()
+    [Benchmark(Description = "4. Ciclo Completo: Envelope + PartitionKey + Headers Tracing + Serialize")]
+    public (string? PartitionKey, byte[] Body) FullLifecycleWithTracing()
     {
         string? partitionKey = EventMetadataExtractor.ExtractPartitionKey(_orderEvent);
         var envelope = EventMessage<OrderPlacedEvent>.Create(

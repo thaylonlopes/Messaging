@@ -127,7 +127,7 @@ static void MapEndpoints(WebApplication app)
         {
             Suite = "TL.Messaging",
             Status = "Healthy",
-            SupportedBrokers = new[] { "RabbitMQ (AMQP 0-9-1)", "Apache Kafka (TCP)" },
+            SupportedBrokers = new[] { "RabbitMQ", "Apache Kafka" },
             Runtimes = new[] { ".NET 8.0", ".NET 9.0" },
             Architecture = "Ports & Adapters (Hexagonal)"
         });

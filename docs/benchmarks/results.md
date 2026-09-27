@@ -1,4 +1,4 @@
-﻿# Relatório Executivo de Benchmarks de Performance — TL.Messaging
+# Relatório Executivo de Benchmarks de Performance — TL.Messaging
 
 **Data de Execução:** 2026-09-25 17:07:01 UTC  
 **Ambiente de Runtime:** .NET 8.0.30 (.NET 8.0.30)  
@@ -19,7 +19,7 @@ Avaliação do envelope imutável `EventMessage<T>` e seu conversor JSON otimiza
 | **3. Serializar EventMessage com Envelope** | 1409,0 ns | 304 B | 0,0000 | 11,58x |
 | **4. Desserializar EventMessage com Envelope** | 6969,7 ns | 1104 B | 0,0400 | 57,29x |
 
-## 2. Nível 2: OrderPlacedEvent, [PartitionKey] e Propagação de Headers W3C OpenTelemetry
+## 2. Nível 2: OrderPlacedEvent, [PartitionKey] e Propagação de Headers OpenTelemetry
 
 Avaliação do extrator de metadados em $O(1)$ (`EventMetadataExtractor`) com anotações declarativas e montagem de cabeçalhos de observabilidade distribuída (`traceparent`, `tracestate`, `baggage`).
 
@@ -27,8 +27,8 @@ Avaliação do extrator de metadados em $O(1)$ (`EventMetadataExtractor`) com an
 | :--- | :---: | :---: | :---: | :---: |
 | **1. Extração de [PartitionKey]** | 56,2 ns | 0 B | 0,0000 | Baseline (1.00x) |
 | **2. Inferência de Tópico Kebab-Case** | 29,6 ns | 0 B | 0,0000 | 0,53x |
-| **3. Composição Headers W3C OpenTelemetry** | 135,7 ns | 392 B | 0,0200 | 2,42x |
-| **4. Ciclo Completo (Envelope + Key + W3C + Ser)** | 2855,7 ns | 952 B | 0,0400 | 50,85x |
+| **3. Composição de Headers OpenTelemetry** | 135,7 ns | 392 B | 0,0200 | 2,42x |
+| **4. Ciclo Completo (Envelope + Chave + Tracing + Serialização)** | 2855,7 ns | 952 B | 0,0400 | 50,85x |
 
 ## 3. Nível 3: Despacho em Lote com Resiliência Polly v8
 
@@ -47,6 +47,6 @@ Comparativo empírico entre despacho em lote direto (baseline sem wrapper) contr
 
 1. **Overhead Desprezível do Envelope CloudEvents:** O envelope imutável `EventMessage<T>` adiciona uma latência insignificante na faixa de dezenas de nanossegundos, com serialização UTF-8 sem alocação desnecessária de strings intermediárias.
 2. **Extração O(1) de Metadados Declarativos:** A leitura de atributos como `[PartitionKey]` e `[Topic]` é amortizada via cache estático em `EventMetadataExtractor`, resultando em acesso instantâneo sem degradação do pipeline de mensageria.
-3. **Rastreabilidade W3C Zero-Friction:** A propagação padronizada do cabeçalho `traceparent` viabiliza correlação distribuída completa com impacto de alocação mínimo, compatível com OpenTelemetry.
+3. **Rastreabilidade Distribuída sem Overhead:** A propagação padronizada do cabeçalho `traceparent` viabiliza correlação distribuída completa com impacto de alocação mínimo via OpenTelemetry.
 4. **Eficiência dos Interceptadores Polly v8:** O pipeline pré-compilado `ResiliencePipeline` apresenta overhead mínimo por invocação no caminho feliz, justificando plenamente sua adoção contínua como padrão corporativo de resiliência.
 

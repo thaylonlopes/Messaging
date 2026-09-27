@@ -74,9 +74,9 @@ public class Program
         reportBuilder.AppendLine();
 
         // ----------------------------------------------------
-        // NÍVEL 2: ORDERPLACEDEVENT, PARTITIONKEY & W3C OPENTELEMETRY
+        // NÍVEL 2: ORDERPLACEDEVENT, PARTITIONKEY & OPENTELEMETRY
         // ----------------------------------------------------
-        Console.WriteLine("-> Executando Nível 2: OrderPlacedEvent com [PartitionKey] e W3C OpenTelemetry...");
+        Console.WriteLine("-> Executando Nível 2: OrderPlacedEvent com [PartitionKey] e OpenTelemetry...");
         var l2 = new Level2OrderPlacedEventBenchmarks();
         l2.Setup();
 
@@ -84,17 +84,17 @@ public class Program
         {
             l2.ExtractPartitionKey();
             l2.InferTopicName();
-            l2.ComposeW3CHeaders();
-            l2.FullLifecycleWithW3CTracing();
+            l2.ComposeOpenTelemetryHeaders();
+            l2.FullLifecycleWithTracing();
         }
 
         const int iterationsL2 = 50_000;
         var m2PartKey = MeasureNano(() => l2.ExtractPartitionKey(), iterationsL2);
         var m2Topic = MeasureNano(() => l2.InferTopicName(), iterationsL2);
-        var m2W3C = MeasureNano(() => l2.ComposeW3CHeaders(), iterationsL2);
-        var m2Full = MeasureNano(() => l2.FullLifecycleWithW3CTracing(), iterationsL2);
+        var m2Tracing = MeasureNano(() => l2.ComposeOpenTelemetryHeaders(), iterationsL2);
+        var m2Full = MeasureNano(() => l2.FullLifecycleWithTracing(), iterationsL2);
 
-        reportBuilder.AppendLine("## 2. Nível 2: OrderPlacedEvent, [PartitionKey] e Propagação de Headers W3C OpenTelemetry");
+        reportBuilder.AppendLine("## 2. Nível 2: OrderPlacedEvent, [PartitionKey] e Propagação de Headers OpenTelemetry");
         reportBuilder.AppendLine();
         reportBuilder.AppendLine("Avaliação do extrator de metadados em $O(1)$ (`EventMetadataExtractor`) com anotações declarativas e montagem de cabeçalhos de observabilidade distribuída (`traceparent`, `tracestate`, `baggage`).");
         reportBuilder.AppendLine();
@@ -102,8 +102,8 @@ public class Program
         reportBuilder.AppendLine("| :--- | :---: | :---: | :---: | :---: |");
         reportBuilder.AppendLine($"| **1. Extração de [PartitionKey]** | {m2PartKey.NanosPerOp:F1} ns | {m2PartKey.AllocatedBytesPerOp} B | {m2PartKey.Gen0Per1k:F4} | Baseline (1.00x) |");
         reportBuilder.AppendLine($"| **2. Inferência de Tópico Kebab-Case** | {m2Topic.NanosPerOp:F1} ns | {m2Topic.AllocatedBytesPerOp} B | {m2Topic.Gen0Per1k:F4} | {(m2Topic.NanosPerOp / m2PartKey.NanosPerOp):F2}x |");
-        reportBuilder.AppendLine($"| **3. Composição Headers W3C OpenTelemetry** | {m2W3C.NanosPerOp:F1} ns | {m2W3C.AllocatedBytesPerOp} B | {m2W3C.Gen0Per1k:F4} | {(m2W3C.NanosPerOp / m2PartKey.NanosPerOp):F2}x |");
-        reportBuilder.AppendLine($"| **4. Ciclo Completo (Envelope + Key + W3C + Ser)** | {m2Full.NanosPerOp:F1} ns | {m2Full.AllocatedBytesPerOp} B | {m2Full.Gen0Per1k:F4} | {(m2Full.NanosPerOp / m2PartKey.NanosPerOp):F2}x |");
+        reportBuilder.AppendLine($"| **3. Composição de Headers OpenTelemetry** | {m2Tracing.NanosPerOp:F1} ns | {m2Tracing.AllocatedBytesPerOp} B | {m2Tracing.Gen0Per1k:F4} | {(m2Tracing.NanosPerOp / m2PartKey.NanosPerOp):F2}x |");
+        reportBuilder.AppendLine($"| **4. Ciclo Completo (Envelope + Chave + Tracing + Serialização)** | {m2Full.NanosPerOp:F1} ns | {m2Full.AllocatedBytesPerOp} B | {m2Full.Gen0Per1k:F4} | {(m2Full.NanosPerOp / m2PartKey.NanosPerOp):F2}x |");
         reportBuilder.AppendLine();
 
         // ----------------------------------------------------
@@ -153,7 +153,7 @@ public class Program
         reportBuilder.AppendLine();
         reportBuilder.AppendLine("1. **Overhead Desprezível do Envelope CloudEvents:** O envelope imutável `EventMessage<T>` adiciona uma latência insignificante na faixa de dezenas de nanossegundos, com serialização UTF-8 sem alocação desnecessária de strings intermediárias.");
         reportBuilder.AppendLine("2. **Extração O(1) de Metadados Declarativos:** A leitura de atributos como `[PartitionKey]` e `[Topic]` é amortizada via cache estático em `EventMetadataExtractor`, resultando em acesso instantâneo sem degradação do pipeline de mensageria.");
-        reportBuilder.AppendLine("3. **Rastreabilidade W3C Zero-Friction:** A propagação padronizada do cabeçalho `traceparent` viabiliza correlação distribuída completa com impacto de alocação mínimo, compatível com OpenTelemetry.");
+        reportBuilder.AppendLine("3. **Rastreabilidade Distribuída sem Overhead:** A propagação padronizada do cabeçalho `traceparent` viabiliza correlação distribuída completa com impacto de alocação mínimo via OpenTelemetry.");
         reportBuilder.AppendLine("4. **Eficiência dos Interceptadores Polly v8:** O pipeline pré-compilado `ResiliencePipeline` apresenta overhead mínimo por invocação no caminho feliz, justificando plenamente sua adoção contínua como padrão corporativo de resiliência.");
         reportBuilder.AppendLine();
 

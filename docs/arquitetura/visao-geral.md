@@ -8,7 +8,7 @@ O repositório fornece uma abstração unificada e desacoplada para sistemas ori
 
 A suíte é composta por:
 1. **`TL.BaseContracts`**: Fundação corporativa de portas agnósticas universais (`IEventProducer`, `IEventHandler<T>`), envelope `EventMessage<T>` compatível com CloudEvents v1.0, metadados contextuais (`EventMetadata`) e envelope funcional (`Result`, `Error`). **Zero dependências externas**, consumido via NuGet oficial.
-2. **`TL.RabbitMQ`** (projeto `TL.Messaging.RabbitMQ`): Adaptador AMQP 0-9-1 com suporte a Publisher Confirms, topologia automática idempotente de Exchanges, Filas e Dead-Letter Queue (`.dlq`), e retentativas exponenciais com Polly.
+2. **`TL.RabbitMQ`** (projeto `TL.Messaging.RabbitMQ`): Adaptador RabbitMQ com suporte a Publisher Confirms, topologia automática idempotente de Exchanges, Filas e Dead-Letter Queue (`.dlq`), e retentativas exponenciais com Polly.
 3. **`TL.Kafka`** (projeto `TL.Messaging.Kafka`): Adaptador Apache Kafka com controle de partição por chave, idempotência nativa (`Acks.All`), commit manual de offsets e redirecionamento para Dead-Letter Topic (`.dlt`).
 4. **`TL.Messaging.Showcase.Api`**: Aplicação de vitrine técnica (Minimal API em .NET 8/.NET 9 com Swagger) demonstrando publicação e consumo em ambos os brokers.
 
@@ -21,7 +21,7 @@ A suíte é composta por:
 ```mermaid
 graph TD
     Client["Microsserviços & Web APIs<br/>[.NET 8 / .NET 9]"]
-    RabbitBroker["Broker RabbitMQ<br/>[AMQP 0-9-1 / Exchanges / DLQ]"]
+    RabbitBroker["Broker RabbitMQ<br/>[Exchanges / Filas / DLQ]"]
     KafkaBroker["Cluster Apache Kafka<br/>[Partições / Tópicos / DLT]"]
 
     subgraph MessagingSystem ["TL.Messaging (Ecossistema de Mensageria Resiliente)"]
@@ -29,7 +29,7 @@ graph TD
     end
 
     Client -->|"Publica e consome eventos via IEventProducer e IEventHandler"| TM
-    TM -->|"Comunica via AMQP 0-9-1 com Publisher Confirms"| RabbitBroker
+    TM -->|"Comunica via RabbitMQ com Publisher Confirms"| RabbitBroker
     TM -->|"Comunica via protocolo Kafka com Idempotência"| KafkaBroker
 ```
 
@@ -49,7 +49,7 @@ graph TD
         ResultModel["Result / Error<br/>(Semântica de Retorno ACK/NACK)"]
     end
 
-    subgraph "TL.Messaging.RabbitMQ (Adaptador AMQP)"
+    subgraph "TL.Messaging.RabbitMQ (Adaptador RabbitMQ)"
         RabbitProducer["RabbitMqProducer<br/>(Publisher Confirms)"]
         RabbitConsumer["RabbitMqConsumer&lt;T, H&gt;<br/>(BackgroundService + DLQ + Polly)"]
     end
