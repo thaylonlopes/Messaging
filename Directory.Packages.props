@@ -26,6 +26,9 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.5.0" />
 
+    <!-- Benchmarks -->
+    <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
+
     <!-- Contratos Base Corporativos -->
     <PackageVersion Include="TL.BaseContracts" Version="0.3.1" />
   </ItemGroup>
